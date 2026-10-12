@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: booths
+    description: Private asynchronous photobooths
 paths:
   /healthz:
     get:
@@ -24,7 +26,190 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /booths:
+    post:
+      operationId: createBooth
+      tags: [booths]
+      summary: Create a private booth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoothInput"
+      responses:
+        "201":
+          description: Booth created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoothCreated"
+  /booths/{privateToken}:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+    get:
+      operationId: getBooth
+      tags: [booths]
+      summary: Get booth status and any revealed frames
+      responses:
+        "200":
+          description: Booth status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoothState"
+    delete:
+      operationId: deleteBooth
+      tags: [booths]
+      summary: Delete a booth
+      parameters:
+        - $ref: "#/components/parameters/CreatorToken"
+      responses:
+        "204":
+          description: Booth deleted
+  /booths/{privateToken}/slots/claim:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+    post:
+      operationId: claimBoothSlot
+      tags: [booths]
+      summary: Claim an available participant slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotClaimInput"
+      responses:
+        "200":
+          description: Claimed participant slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotClaim"
+  /booths/{privateToken}/slots/{slotId}/upload-url:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+      - $ref: "#/components/parameters/SlotId"
+      - $ref: "#/components/parameters/ParticipantToken"
+    post:
+      operationId: requestFrameUpload
+      tags: [booths]
+      summary: Request a private upload URL for a confirmed candidate frame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FrameUploadInput"
+      responses:
+        "200":
+          description: Signed upload destination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameUploadDestination"
+  /booths/{privateToken}/slots/{slotId}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+      - $ref: "#/components/parameters/SlotId"
+      - $ref: "#/components/parameters/ParticipantToken"
+    post:
+      operationId: confirmBoothFrame
+      tags: [booths]
+      summary: Confirm an uploaded frame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FrameConfirmInput"
+      responses:
+        "200":
+          description: Confirmed frame and updated booth status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoothState"
+  /booths/{privateToken}/customization:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+    put:
+      operationId: saveBoothCustomization
+      tags: [booths]
+      summary: Save a booth's reveal artifact customization
+      parameters:
+        - $ref: "#/components/parameters/CreatorToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomizationInput"
+      responses:
+        "200":
+          description: Saved customization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomizationInput"
+  /booths/{privateToken}/push-subscriptions:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+      - $ref: "#/components/parameters/AccessToken"
+    post:
+      operationId: subscribeToBoothReady
+      tags: [booths]
+      summary: Save a user-initiated booth-ready push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionInput"
+      responses:
+        "201":
+          description: Subscription saved or demo push mode reported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscriptionResult"
 components:
+  parameters:
+    PrivateToken:
+      name: privateToken
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 32
+    SlotId:
+      name: slotId
+      in: path
+      required: true
+      schema:
+        type: string
+    ParticipantToken:
+      name: X-Participant-Token
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 32
+    CreatorToken:
+      name: X-Creator-Token
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 32
+    AccessToken:
+      name: X-Access-Token
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 32
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +218,141 @@ components:
           type: string
       required:
         - status
+    BoothInput:
+      type: object
+      required: [name, participantCount, slots, mode, layout, prompt, countdownSeconds, revealMode]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        subtitle: { type: string, maxLength: 80 }
+        occasion: { type: string, maxLength: 40 }
+        participantCount: { type: integer, minimum: 2, maximum: 6 }
+        slots:
+          type: array
+          minItems: 2
+          maxItems: 6
+          items: { type: string, maxLength: 30 }
+        mode: { type: string, enum: [classic, scrapbook] }
+        layout: { type: string, enum: [vertical, horizontal, double, grid, editorial, freeform] }
+        prompt: { type: string, maxLength: 120 }
+        countdownSeconds: { type: integer, enum: [3, 5, 10] }
+        revealMode: { type: string, enum: [complete, scheduled] }
+        scheduledRevealAt: { type: ["string", "null"], format: date-time }
+    BoothCreated:
+      type: object
+      required: [privateToken, creatorToken, state]
+      properties:
+        privateToken: { type: string }
+        creatorToken: { type: string }
+        state: { $ref: "#/components/schemas/BoothState" }
+    BoothState:
+      type: object
+      required: [name, subtitle, occasion, participantCount, mode, layout, prompt, countdownSeconds, revealMode, scheduledRevealAt, status, slots, completedCount, revealAvailable, customization]
+      properties:
+        name: { type: string }
+        subtitle: { type: string }
+        occasion: { type: string }
+        participantCount: { type: integer }
+        mode: { type: string, enum: [classic, scrapbook] }
+        layout: { type: string, enum: [vertical, horizontal, double, grid, editorial, freeform] }
+        prompt: { type: string }
+        countdownSeconds: { type: integer }
+        revealMode: { type: string, enum: [complete, scheduled] }
+        scheduledRevealAt: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [collecting, complete, revealed, expired, deleted] }
+        completedCount: { type: integer }
+        revealAvailable: { type: boolean }
+        slots:
+          type: array
+          items: { $ref: "#/components/schemas/BoothSlot" }
+        customization: { $ref: "#/components/schemas/CustomizationInput" }
+    BoothSlot:
+      type: object
+      required: [id, position, displayName, claimStatus, photoUrl]
+      properties:
+        id: { type: string }
+        position: { type: integer }
+        displayName: { type: string }
+        claimStatus: { type: string, enum: [open, claimed, submitted] }
+        photoUrl: { type: ["string", "null"], format: uri }
+    SlotClaimInput:
+      type: object
+      required: [displayName]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 30 }
+        slotId: { type: ["string", "null"] }
+    SlotClaim:
+      type: object
+      required: [slotId, displayName, participantToken]
+      properties:
+        slotId: { type: string }
+        displayName: { type: string }
+        participantToken: { type: string }
+    FrameUploadInput:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, maxLength: 180 }
+        size: { type: integer, minimum: 1, maximum: 12000000 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+    FrameUploadDestination:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+    FrameConfirmInput:
+      type: object
+      required: [objectPath, width, height, captureSource]
+      properties:
+        objectPath: { type: string }
+        width: { type: integer, minimum: 1, maximum: 10000 }
+        height: { type: integer, minimum: 1, maximum: 10000 }
+        captureSource: { type: string, enum: [camera, upload] }
+    CustomizationInput:
+      type: object
+      required: [mode, layout, frameType, frameColor, filter, objects, showDate]
+      properties:
+        mode: { type: string, enum: [classic, scrapbook] }
+        layout: { type: string, enum: [vertical, horizontal, double, grid, editorial, freeform] }
+        frameType: { type: string, enum: [clean, black, solid, polaroid, film, torn, pattern] }
+        frameColor: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        filter: { type: string, enum: [original, soft-bw, high-contrast, warm-film, cool-flash, faded, disposable, sepia, grain] }
+        showDate: { type: boolean }
+        caption: { type: string, maxLength: 120 }
+        objects:
+          type: array
+          maxItems: 40
+          items: { $ref: "#/components/schemas/CanvasObject" }
+    CanvasObject:
+      type: object
+      required: [id, kind, label, x, y, width, height, rotation, color, zIndex]
+      properties:
+        id: { type: string, maxLength: 60 }
+        kind: { type: string, enum: [text, sticker] }
+        label: { type: string, maxLength: 120 }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+        width: { type: number, minimum: 0.03, maximum: 1 }
+        height: { type: number, minimum: 0.03, maximum: 1 }
+        rotation: { type: number, minimum: -360, maximum: 360 }
+        color: { type: string, maxLength: 32 }
+        zIndex: { type: integer, minimum: 0, maximum: 100 }
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        expirationTime: { type: ["number", "null"] }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 16, maxLength: 256 }
+            auth: { type: string, minLength: 8, maxLength: 128 }
+    PushSubscriptionResult:
+      type: object
+      required: [enabled, message]
+      properties:
+        enabled: { type: boolean }
+        message: { type: string }
 

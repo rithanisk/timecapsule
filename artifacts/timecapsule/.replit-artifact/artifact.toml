@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Timecapsule"
+description = "A private, asynchronous photobooth for friends and family in different places. Create an invitation-only booth, collect one frame from each participant, reveal the shared photostrip, customize it, and download a keepsake."
+version = "1.0.0"
+id = "artifacts/timecapsule"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22141
+
+[services.development]
+run = "pnpm --filter @workspace/timecapsule run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/timecapsule", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/timecapsule/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22141"
+BASE_PATH = "/"

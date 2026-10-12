@@ -1,0 +1,331 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1740" height="4520" viewBox="0 0 1740 4520">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F7F1E7"/><stop offset="1" stop-color="#EEE4D5"/></linearGradient>
+    <linearGradient id="photo1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9FB9C7"/><stop offset=".55" stop-color="#D8B7A1"/><stop offset="1" stop-color="#725D65"/></linearGradient>
+    <linearGradient id="photo2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E6C4B5"/><stop offset=".55" stop-color="#AE8E9B"/><stop offset="1" stop-color="#473D4B"/></linearGradient>
+    <linearGradient id="photo3" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C6D9B8"/><stop offset=".6" stop-color="#E9D2A7"/><stop offset="1" stop-color="#786D52"/></linearGradient>
+    <linearGradient id="photo4" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B8C8E6"/><stop offset=".55" stop-color="#CAB1D9"/><stop offset="1" stop-color="#5C526D"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#2B2925" flood-opacity=".12"/></filter>
+    <filter id="smallShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2B2925" flood-opacity=".12"/></filter>
+    <style>
+      .sans{font-family:Inter,Arial,sans-serif}.serif{font-family:Georgia,serif}.ink{fill:#292723}.muted{fill:#6F685F}.tiny{font:500 10px Inter,Arial,sans-serif;letter-spacing:.6px}.label{font:600 12px Inter,Arial,sans-serif}.body{font:400 13px Inter,Arial,sans-serif}.body2{font:400 15px Inter,Arial,sans-serif}.h1{font:700 32px Georgia,serif}.h2{font:700 24px Georgia,serif}.h3{font:700 18px Georgia,serif}.btn{fill:#292723}.btnText{font:600 14px Inter,Arial,sans-serif;fill:#FFFDF8}.outline{fill:none;stroke:#BFB5A8;stroke-width:1}.card{fill:#FFFDF8;stroke:#D9D0C4;stroke-width:1}.screen{fill:#FBF7F0;stroke:#292723;stroke-width:2}.photoLabel{font:600 9px Inter,Arial,sans-serif;fill:white;letter-spacing:.4px}.center{text-anchor:middle}.right{text-anchor:end}
+    </style>
+  </defs>
+
+  <rect width="1740" height="4520" fill="url(#bg)"/>
+  <circle cx="1580" cy="120" r="210" fill="#DCE8E3" opacity=".7"/>
+  <path d="M0 420 C420 340 760 500 1180 390 C1430 325 1590 340 1740 390 L1740 0 L0 0Z" fill="#FFFDF8" opacity=".72"/>
+
+  <g id="cover">
+    <text x="80" y="84" class="tiny ink">TIMECAPSULE · PRODUCT DESIGN · V1</text>
+    <text x="80" y="152" class="serif ink" font-size="58" font-weight="700">Different places.</text>
+    <text x="80" y="214" class="serif ink" font-size="58" font-style="italic">One photobooth.</text>
+    <text x="80" y="258" class="body2 muted">An asynchronous photobooth for long-distance friends to make a new photo together.</text>
+    <g transform="translate(80 300)">
+      <rect width="122" height="38" rx="19" fill="#292723"/><text x="61" y="24" class="label center" fill="#FFFDF8">Mobile first</text>
+      <rect x="134" width="164" height="38" rx="19" fill="#DCE8E3"/><text x="216" y="24" class="label center ink">2–6 participants</text>
+      <rect x="310" width="204" height="38" rx="19" fill="#EBD7CF"/><text x="412" y="24" class="label center ink">Classic + scrapbook</text>
+    </g>
+    <g transform="translate(1030 62)" filter="url(#shadow)">
+      <rect width="230" height="312" rx="6" fill="#FFF" transform="rotate(-5 115 156)"/>
+      <g transform="translate(20 18) rotate(-5 95 135)">
+        <rect width="190" height="58" rx="4" fill="url(#photo1)"/><circle cx="92" cy="28" r="15" fill="#EED2BF"/><path d="M64 58 Q95 30 126 58" fill="#4D4148" opacity=".85"/>
+        <rect y="66" width="190" height="58" rx="4" fill="url(#photo2)"/><circle cx="92" cy="94" r="15" fill="#EAC7B7"/><path d="M64 124 Q95 96 126 124" fill="#463C49" opacity=".85"/>
+        <rect y="132" width="190" height="58" rx="4" fill="url(#photo3)"/><circle cx="92" cy="160" r="15" fill="#E7C6AD"/><path d="M64 190 Q95 162 126 190" fill="#62594A" opacity=".85"/>
+        <rect y="198" width="190" height="58" rx="4" fill="url(#photo4)"/><circle cx="92" cy="226" r="15" fill="#E3C4B7"/><path d="M64 256 Q95 228 126 256" fill="#50495C" opacity=".85"/>
+        <text x="95" y="281" class="serif center ink" font-size="14" font-style="italic">still us, 2026</text>
+      </g>
+      <path d="M204 32 l18 -14" stroke="#E5786A" stroke-width="8" stroke-linecap="round"/><path d="M210 16 l-3 23" stroke="#E5786A" stroke-width="8" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(1295 110) rotate(6)" filter="url(#smallShadow)">
+      <rect width="250" height="190" rx="22" fill="#C9DCEE"/>
+      <rect x="20" y="24" width="104" height="116" rx="4" fill="url(#photo4)"/><circle cx="72" cy="70" r="22" fill="#E7C8B8"/><path d="M34 140 Q72 92 110 140" fill="#53647C"/>
+      <rect x="136" y="46" width="88" height="88" rx="4" fill="url(#photo1)"/><circle cx="180" cy="79" r="18" fill="#E6C3AB"/><path d="M148 134 Q180 92 212 134" fill="#6A4E58"/>
+      <path d="M22 152 Q65 170 105 154" stroke="#FFF" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <text x="173" y="160" class="serif center" font-size="15" fill="#33445B">our little corner</text>
+    </g>
+  </g>
+
+  <g id="foundations" transform="translate(80 420)">
+    <text x="0" y="20" class="tiny muted">VISUAL DIRECTION</text>
+    <text x="0" y="54" class="h2 ink">Analog booth × editorial scrapbook</text>
+    <text x="0" y="82" class="body muted">Quiet product chrome. Expressive outputs. Warm paper, confident black, faded color, handmade accents.</text>
+    <g transform="translate(0 112)">
+      <rect width="92" height="54" rx="12" fill="#FBF7F0" stroke="#D9D0C4"/><text x="46" y="74" class="tiny center muted">PAPER</text>
+      <rect x="112" width="92" height="54" rx="12" fill="#292723"/><text x="158" y="74" class="tiny center muted">INK</text>
+      <rect x="224" width="92" height="54" rx="12" fill="#E5786A"/><text x="270" y="74" class="tiny center muted">CORAL</text>
+      <rect x="336" width="92" height="54" rx="12" fill="#A9C7BD"/><text x="382" y="74" class="tiny center muted">SAGE</text>
+      <rect x="448" width="92" height="54" rx="12" fill="#AFC4E6"/><text x="494" y="74" class="tiny center muted">SKY</text>
+    </g>
+    <g transform="translate(650 4)">
+      <text class="tiny muted">TYPE</text>
+      <text y="42" class="serif ink" font-size="28" font-weight="700">A keepsake should feel kept.</text>
+      <text y="74" class="body muted">Georgia for emotional moments · Inter for everything functional</text>
+    </g>
+    <g transform="translate(1235 0)">
+      <text class="tiny muted">CORE CONTROLS</text>
+      <rect y="22" width="150" height="44" rx="22" class="btn"/><text x="75" y="49" class="btnText center">Create a booth</text>
+      <rect x="166" y="22" width="150" height="44" rx="22" class="card"/><text x="241" y="49" class="label center ink">Retake photo</text>
+      <rect y="82" width="316" height="46" rx="12" class="card"/><text x="16" y="109" class="body muted">Four time zones, still us</text>
+    </g>
+  </g>
+
+  <!-- ROW 1 -->
+  <g id="screen-01-welcome" transform="translate(80 660)">
+    <text y="-20" class="label ink">01 · Welcome</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">timecapsule</text><text x="332" y="48" class="label right muted">About</text>
+    <text x="28" y="118" class="h1 ink">Make a photo</text><text x="28" y="155" class="h1 ink" font-style="italic">together.</text>
+    <text x="28" y="190" class="body muted">No scheduling. No group call. Just one</text><text x="28" y="210" class="body muted">shared booth, completed in your own time.</text>
+    <g transform="translate(76 244)" filter="url(#smallShadow)">
+      <rect width="208" height="330" rx="5" fill="#FFF"/>
+      <rect x="16" y="16" width="176" height="62" rx="3" fill="url(#photo1)"/><circle cx="104" cy="45" r="15" fill="#EAC8B1"/><path d="M72 78 Q104 43 136 78" fill="#564752"/>
+      <rect x="16" y="86" width="176" height="62" rx="3" fill="url(#photo2)"/><circle cx="104" cy="115" r="15" fill="#EBCABB"/><path d="M72 148 Q104 113 136 148" fill="#3F3949"/>
+      <rect x="16" y="156" width="176" height="62" rx="3" fill="url(#photo3)"/><circle cx="104" cy="185" r="15" fill="#E5C4AE"/><path d="M72 218 Q104 183 136 218" fill="#615748"/>
+      <rect x="16" y="226" width="176" height="62" rx="3" fill="url(#photo4)"/><circle cx="104" cy="255" r="15" fill="#E5C7BB"/><path d="M72 288 Q104 253 136 288" fill="#50485C"/>
+      <text x="104" y="311" class="tiny center ink">FRIENDS SINCE 2018</text>
+    </g>
+    <rect x="28" y="620" width="304" height="52" rx="26" class="btn"/><text x="180" y="652" class="btnText center">Create a booth</text>
+    <text x="180" y="704" class="tiny center muted">PRIVATE BY DEFAULT · EXPIRES IN 90 DAYS</text>
+  </g>
+
+  <g id="screen-02-setup" transform="translate(500 660)">
+    <text y="-20" class="label ink">02 · Booth setup</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label muted">1 OF 4</text><text x="332" y="48" class="label right muted">Save draft</text>
+    <text x="28" y="98" class="h2 ink">Name your booth</text>
+    <text x="28" y="128" class="body muted">Make it feel like your group—not a template.</text>
+    <text x="28" y="180" class="tiny muted">BOOTH NAME</text>
+    <rect x="28" y="194" width="304" height="54" rx="12" class="card"/><text x="44" y="227" class="body2 ink">Four time zones, still us</text>
+    <text x="28" y="284" class="tiny muted">HOW MANY PEOPLE?</text>
+    <g transform="translate(28 300)">
+      <rect width="304" height="54" rx="27" fill="#EEE7DD"/>
+      <circle cx="107" cy="27" r="21" fill="#FFFDF8"/><text x="107" y="33" class="label center ink">2</text>
+      <circle cx="152" cy="27" r="21" fill="#292723"/><text x="152" y="33" class="label center" fill="#FFF">4</text>
+      <circle cx="197" cy="27" r="21" fill="#FFFDF8"/><text x="197" y="33" class="label center ink">6</text>
+    </g>
+    <text x="28" y="398" class="tiny muted">PARTICIPANT NAMES</text>
+    <g transform="translate(28 414)">
+      <rect width="304" height="48" rx="12" class="card"/><circle cx="24" cy="24" r="12" fill="#E5786A"/><text x="48" y="29" class="body ink">Rithani</text><text x="282" y="29" class="tiny right muted">YOU</text>
+      <rect y="58" width="304" height="48" rx="12" class="card"/><circle cx="24" cy="82" r="12" fill="#A9C7BD"/><text x="48" y="87" class="body ink">Sana</text>
+      <rect y="116" width="304" height="48" rx="12" class="card"/><circle cx="24" cy="140" r="12" fill="#AFC4E6"/><text x="48" y="145" class="body ink">Meera</text>
+      <rect y="174" width="304" height="48" rx="12" class="card"/><circle cx="24" cy="198" r="12" fill="#EBCB8B"/><text x="48" y="203" class="body ink">Ananya</text>
+    </g>
+    <rect x="28" y="672" width="304" height="52" rx="26" class="btn"/><text x="180" y="704" class="btnText center">Choose a style</text>
+  </g>
+
+  <g id="screen-03-style" transform="translate(920 660)">
+    <text y="-20" class="label ink">03 · Choose the feeling</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label muted">2 OF 4</text><text x="332" y="48" class="label right ink">Back</text>
+    <text x="28" y="98" class="h2 ink">How should it feel?</text>
+    <text x="28" y="126" class="body muted">Start from a complete look. Change details later.</text>
+    <g transform="translate(28 160)">
+      <rect width="304" height="190" rx="20" fill="#FFFDF8" stroke="#292723" stroke-width="2"/>
+      <text x="18" y="28" class="tiny ink">CLASSIC BOOTH</text><circle cx="278" cy="24" r="10" fill="#292723"/><circle cx="278" cy="24" r="4" fill="#FFF"/>
+      <g transform="translate(108 42)"><rect width="88" height="130" fill="#FFF" stroke="#D7CFC3"/><rect x="7" y="7" width="74" height="25" fill="url(#photo1)"/><rect x="7" y="38" width="74" height="25" fill="url(#photo2)"/><rect x="7" y="69" width="74" height="25" fill="url(#photo3)"/><rect x="7" y="100" width="74" height="25" fill="url(#photo4)"/></g>
+    </g>
+    <g transform="translate(28 368)">
+      <rect width="304" height="190" rx="20" fill="#C9DCEE"/>
+      <text x="18" y="28" class="tiny ink">SCRAPBOOK BOOTH</text><circle cx="278" cy="24" r="10" fill="#FFF" stroke="#877E73"/>
+      <rect x="26" y="46" width="110" height="92" rx="4" fill="url(#photo4)" transform="rotate(-5 81 92)"/>
+      <rect x="150" y="54" width="122" height="82" rx="4" fill="url(#photo1)" transform="rotate(4 211 95)"/>
+      <path d="M40 150 Q90 168 142 146" fill="none" stroke="#FFF" stroke-width="5" stroke-linecap="round"/>
+      <text x="215" y="160" class="serif center" font-size="13" fill="#3B4E68">the ordinary days</text>
+      <path d="M250 42 l10 -14 M255 30 l-2 18" stroke="#E5786A" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="28" y="604" class="tiny muted">LAYOUT</text>
+    <g transform="translate(28 620)"><rect width="66" height="42" rx="10" fill="#292723"/><text x="33" y="25" class="tiny center" fill="#FFF">STRIP</text><rect x="76" width="66" height="42" rx="10" class="card"/><text x="109" y="25" class="tiny center ink">GRID</text><rect x="152" width="82" height="42" rx="10" class="card"/><text x="193" y="25" class="tiny center ink">DOUBLE</text><rect x="244" width="60" height="42" rx="10" class="card"/><text x="274" y="25" class="tiny center ink">FREE</text></g>
+    <rect x="28" y="686" width="304" height="46" rx="23" class="btn"/><text x="180" y="714" class="btnText center">Continue</text>
+  </g>
+
+  <g id="screen-04-invite" transform="translate(1340 660)">
+    <text y="-20" class="label ink">04 · Invitation</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">timecapsule</text><text x="332" y="48" class="label right muted">Private</text>
+    <g transform="translate(28 84)"><rect width="304" height="166" rx="24" fill="#292723"/><text x="152" y="42" class="tiny center" fill="#D8D0C3">RITHANI INVITED YOU TO</text><text x="152" y="82" class="serif center" font-size="26" font-weight="700" fill="#FFFDF8">Four time zones,</text><text x="152" y="112" class="serif center" font-size="26" font-style="italic" fill="#FFFDF8">still us</text><text x="152" y="144" class="tiny center" fill="#D8D0C3">4 FRIENDS · ABOUT 1 MINUTE</text></g>
+    <text x="28" y="292" class="tiny muted">TODAY'S PROMPT</text>
+    <rect x="28" y="308" width="304" height="86" rx="16" fill="#EBD7CF"/><text x="48" y="342" class="h3 ink">Look toward the</text><text x="48" y="368" class="h3 ink">next person →</text>
+    <text x="28" y="440" class="tiny muted">CHOOSE YOUR FRAME</text>
+    <g transform="translate(28 456)"><rect width="304" height="50" rx="14" class="card"/><circle cx="25" cy="25" r="12" fill="#A9C7BD"/><text x="48" y="30" class="body ink">Sana</text><text x="282" y="30" class="tiny right muted">RESERVED</text><rect y="60" width="304" height="50" rx="14" fill="#F1ECE4"/><circle cx="25" cy="85" r="12" fill="#AFC4E6"/><text x="48" y="90" class="body muted">Meera · completed</text><text x="282" y="90" class="tiny right muted">✓</text></g>
+    <g transform="translate(28 596)"><path d="M0 0 H304" stroke="#D9D0C4"/><text x="0" y="28" class="tiny muted">WHO CAN SEE IT?</text><text x="0" y="52" class="body ink">Only people with this private link—after all</text><text x="0" y="72" class="body ink">four frames are complete.</text></g>
+    <rect x="28" y="684" width="304" height="48" rx="24" class="btn"/><text x="180" y="714" class="btnText center">Claim Sana's frame</text>
+  </g>
+
+  <!-- ROW 2 -->
+  <g id="screen-05-camera" transform="translate(80 1510)">
+    <text y="-20" class="label ink">05 · Camera</text>
+    <rect width="360" height="760" rx="34" fill="#171717" stroke="#292723" stroke-width="2" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label" fill="#FFF">Sana's frame</text><text x="332" y="48" class="label right" fill="#BDBDBD">Close</text>
+    <rect x="20" y="76" width="320" height="470" rx="26" fill="url(#photo1)"/>
+    <ellipse cx="180" cy="244" rx="72" ry="88" fill="#E4C1AE" opacity=".86"/><path d="M82 520 Q180 330 278 520" fill="#4B3E49" opacity=".92"/>
+    <rect x="44" y="100" width="272" height="422" rx="18" fill="none" stroke="#FFF" stroke-width="2" stroke-dasharray="8 8" opacity=".8"/>
+    <rect x="44" y="112" width="272" height="56" rx="28" fill="#171717" opacity=".72"/><text x="180" y="136" class="tiny center" fill="#D6D6D6">PROMPT</text><text x="180" y="156" class="label center" fill="#FFF">Look toward the next person →</text>
+    <text x="180" y="580" class="body center" fill="#EAEAEA">Tap when you're ready · 5 second timer</text>
+    <circle cx="180" cy="646" r="38" fill="#FFF"/><circle cx="180" cy="646" r="30" fill="none" stroke="#292723" stroke-width="2"/>
+    <circle cx="66" cy="646" r="24" fill="#303030"/><text x="66" y="652" class="label center" fill="#FFF">↺</text><circle cx="294" cy="646" r="24" fill="#303030"/><text x="294" y="651" class="label center" fill="#FFF">⇄</text>
+    <text x="180" y="716" class="tiny center" fill="#AFAFAF">YOUR PHOTO ISN'T UPLOADED UNTIL YOU CONFIRM</text>
+  </g>
+
+  <g id="screen-06-review" transform="translate(500 1510)">
+    <text y="-20" class="label ink">06 · Review</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label muted">YOUR FRAME</text><text x="332" y="48" class="label right ink">Help</text>
+    <text x="28" y="98" class="h2 ink">Keep this one?</text>
+    <text x="28" y="126" class="body muted">Nothing is shared until you confirm.</text>
+    <rect x="28" y="160" width="304" height="380" rx="20" fill="url(#photo1)"/><ellipse cx="180" cy="300" rx="65" ry="80" fill="#E4C1AE" opacity=".86"/><path d="M90 540 Q180 350 270 540" fill="#4B3E49" opacity=".92"/>
+    <rect x="44" y="176" width="76" height="30" rx="15" fill="#FFF" opacity=".88"/><text x="82" y="195" class="tiny center ink">WARM FILM</text>
+    <g transform="translate(28 564)"><rect width="146" height="48" rx="24" class="card"/><text x="73" y="29" class="label center ink">Retake</text><rect x="158" width="146" height="48" rx="24" fill="#E9E1D7"/><text x="231" y="29" class="label center ink">Mirror: off</text></g>
+    <rect x="28" y="630" width="304" height="52" rx="26" class="btn"/><text x="180" y="662" class="btnText center">Use this photo</text>
+    <text x="180" y="716" class="tiny center muted">VISIBLE AFTER EVERYONE FINISHES</text>
+  </g>
+
+  <g id="screen-07-waiting" transform="translate(920 1510)">
+    <text y="-20" class="label ink">07 · Waiting room</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">timecapsule</text><text x="332" y="48" class="label right muted">Manage</text>
+    <text x="28" y="102" class="h2 ink">Two friends left.</text>
+    <text x="28" y="132" class="body muted">The photos stay hidden until everyone is in.</text>
+    <g transform="translate(28 174)">
+      <rect width="304" height="340" rx="24" fill="#EDE5DA"/>
+      <g transform="translate(26 28)"><rect width="116" height="116" rx="12" fill="#A9C7BD"/><text x="58" y="55" class="h2 center" fill="#FFF">R</text><text x="58" y="92" class="tiny center" fill="#FFF">READY</text><rect x="136" width="116" height="116" rx="12" fill="#AFC4E6"/><text x="194" y="55" class="h2 center" fill="#FFF">M</text><text x="194" y="92" class="tiny center" fill="#FFF">READY</text><rect y="136" width="116" height="116" rx="12" fill="#FFFDF8" stroke="#CFC5B7" stroke-dasharray="6 6"/><text x="58" y="66" class="h2 center muted">S</text><text x="58" y="94" class="tiny center muted">WAITING</text><rect x="136" y="136" width="116" height="116" rx="12" fill="#FFFDF8" stroke="#CFC5B7" stroke-dasharray="6 6"/><text x="194" y="202" class="h2 center muted">A</text><text x="194" y="230" class="tiny center muted">WAITING</text></g>
+      <text x="152" y="314" class="body center muted">2 of 4 frames confirmed</text>
+    </g>
+    <rect x="28" y="548" width="304" height="52" rx="26" class="btn"/><text x="180" y="580" class="btnText center">Copy invitation link</text>
+    <rect x="28" y="614" width="304" height="52" rx="26" class="card"/><text x="180" y="646" class="label center ink">Copy a gentle reminder</text>
+    <text x="28" y="714" class="body muted">You can close this page. Come back with the same link.</text>
+  </g>
+
+  <g id="screen-08-reveal" transform="translate(1340 1510)">
+    <text y="-20" class="label ink">08 · Reveal</text>
+    <rect width="360" height="760" rx="34" fill="#292723" stroke="#292723" stroke-width="2" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label" fill="#FFF">The booth is ready</text><text x="332" y="48" class="label right" fill="#C9C1B6">•••</text>
+    <text x="180" y="106" class="serif center" font-size="25" font-weight="700" fill="#FFFDF8">Four time zones,</text><text x="180" y="136" class="serif center" font-size="25" font-style="italic" fill="#FFFDF8">still us</text>
+    <g transform="translate(90 170)" filter="url(#shadow)">
+      <rect width="180" height="402" rx="4" fill="#FFFDF8"/>
+      <rect x="12" y="12" width="156" height="74" fill="url(#photo1)"/><circle cx="90" cy="43" r="18" fill="#E5C2AF"/><path d="M50 86 Q90 42 130 86" fill="#50414D"/>
+      <rect x="12" y="94" width="156" height="74" fill="url(#photo2)"/><circle cx="90" cy="125" r="18" fill="#E7C4B4"/><path d="M50 168 Q90 124 130 168" fill="#433B48"/>
+      <rect x="12" y="176" width="156" height="74" fill="url(#photo3)"/><circle cx="90" cy="207" r="18" fill="#E4C3AB"/><path d="M50 250 Q90 206 130 250" fill="#5B5548"/>
+      <rect x="12" y="258" width="156" height="74" fill="url(#photo4)"/><circle cx="90" cy="289" r="18" fill="#E1C2B6"/><path d="M50 332 Q90 288 130 332" fill="#514A5D"/>
+      <text x="90" y="358" class="tiny center ink">SINGAPORE · LONDON · CHENNAI</text><text x="90" y="380" class="serif center ink" font-size="12" font-style="italic">12 Oct 2026</text>
+    </g>
+    <g transform="translate(28 610)"><rect width="304" height="52" rx="26" fill="#FFFDF8"/><text x="152" y="32" class="label center ink">Download photostrip</text><rect y="66" width="146" height="46" rx="23" fill="#3B3935" stroke="#6D6962"/><text x="73" y="94" class="label center" fill="#FFF">Share link</text><rect x="158" y="66" width="146" height="46" rx="23" fill="#3B3935" stroke="#6D6962"/><text x="231" y="94" class="label center" fill="#FFF">Customize</text></g>
+  </g>
+
+  <!-- ROW 3: CUSTOMIZATION -->
+  <g id="screen-09-layout-editor" transform="translate(80 2360)">
+    <text y="-20" class="label ink">09 · Editor · Layout</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="24" y="44" class="label ink">Customize</text><text x="336" y="44" class="label right ink">Done</text>
+    <g transform="translate(58 74)"><rect width="244" height="360" rx="20" fill="#DCE8E3"/><rect x="20" y="28" width="92" height="128" rx="3" fill="url(#photo1)" transform="rotate(-4 66 92)"/><rect x="128" y="38" width="94" height="112" rx="3" fill="url(#photo2)" transform="rotate(3 175 94)"/><rect x="28" y="174" width="120" height="108" rx="3" fill="url(#photo3)" transform="rotate(2 88 228)"/><rect x="154" y="166" width="70" height="116" rx="3" fill="url(#photo4)" transform="rotate(-3 189 224)"/><path d="M24 302 Q76 324 132 300" fill="none" stroke="#FFF" stroke-width="5" stroke-linecap="round"/><text x="174" y="320" class="serif center" font-size="13" font-style="italic" fill="#40594F">still us</text></g>
+    <text x="24" y="470" class="tiny muted">LAYOUT</text>
+    <g transform="translate(24 486)"><rect width="72" height="56" rx="12" fill="#292723"/><text x="36" y="34" class="tiny center" fill="#FFF">FREE</text><rect x="82" width="72" height="56" rx="12" class="card"/><text x="118" y="34" class="tiny center ink">STRIP</text><rect x="164" width="72" height="56" rx="12" class="card"/><text x="200" y="34" class="tiny center ink">GRID</text><rect x="246" width="72" height="56" rx="12" class="card"/><text x="282" y="34" class="tiny center ink">DOUBLE</text></g>
+    <text x="24" y="578" class="tiny muted">PHOTO ARRANGEMENT</text><rect x="24" y="592" width="312" height="50" rx="14" class="card"/><text x="44" y="622" class="body ink">Tap a photo to crop, zoom, rotate or swap</text>
+    <g transform="translate(16 680)"><rect width="328" height="58" rx="22" fill="#FFFDF8" stroke="#D9D0C4"/><text x="33" y="35" class="tiny ink">▦</text><text x="82" y="35" class="tiny muted">FRAME</text><text x="139" y="35" class="tiny muted">FILTER</text><text x="203" y="35" class="tiny muted">STICKERS</text><text x="284" y="35" class="tiny muted">TEXT</text></g>
+  </g>
+
+  <g id="screen-10-filter-editor" transform="translate(500 2360)">
+    <text y="-20" class="label ink">10 · Editor · Frame &amp; filter</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="24" y="44" class="label ink">Customize</text><text x="336" y="44" class="label right ink">Done</text>
+    <g transform="translate(91 72)" filter="url(#smallShadow)"><rect width="178" height="350" rx="4" fill="#2F3032"/><rect x="12" y="12" width="154" height="68" fill="url(#photo1)"/><rect x="12" y="88" width="154" height="68" fill="url(#photo2)"/><rect x="12" y="164" width="154" height="68" fill="url(#photo3)"/><rect x="12" y="240" width="154" height="68" fill="url(#photo4)"/><text x="89" y="332" class="tiny center" fill="#FFF">STILL US · 2026</text></g>
+    <text x="24" y="458" class="tiny muted">FILTER</text>
+    <g transform="translate(24 474)"><rect width="54" height="70" rx="10" fill="#292723"/><rect x="7" y="7" width="40" height="40" rx="6" fill="url(#photo1)"/><text x="27" y="63" class="tiny center" fill="#FFF">FILM</text><rect x="64" width="54" height="70" rx="10" class="card"/><rect x="71" y="7" width="40" height="40" rx="6" fill="#777"/><text x="91" y="63" class="tiny center ink">B&amp;W</text><rect x="128" width="54" height="70" rx="10" class="card"/><rect x="135" y="7" width="40" height="40" rx="6" fill="#D7B69B"/><text x="155" y="63" class="tiny center ink">WARM</text><rect x="192" width="54" height="70" rx="10" class="card"/><rect x="199" y="7" width="40" height="40" rx="6" fill="#B7CCE0"/><text x="219" y="63" class="tiny center ink">FLASH</text><rect x="256" width="54" height="70" rx="10" class="card"/><rect x="263" y="7" width="40" height="40" rx="6" fill="#E8DED0"/><text x="283" y="63" class="tiny center ink">FADE</text></g>
+    <text x="24" y="582" class="tiny muted">FRAME COLOR</text>
+    <g transform="translate(24 596)"><circle cx="18" cy="18" r="17" fill="#2F3032" stroke="#2F3032"/><circle cx="18" cy="18" r="22" fill="none" stroke="#292723"/><circle cx="70" cy="18" r="17" fill="#FFFDF8" stroke="#BFB5A8"/><circle cx="122" cy="18" r="17" fill="#E5786A"/><circle cx="174" cy="18" r="17" fill="#A9C7BD"/><circle cx="226" cy="18" r="17" fill="#AFC4E6"/><circle cx="278" cy="18" r="17" fill="#EBCB8B"/></g>
+    <g transform="translate(16 680)"><rect width="328" height="58" rx="22" fill="#FFFDF8" stroke="#D9D0C4"/><text x="30" y="35" class="tiny muted">LAYOUT</text><text x="91" y="35" class="tiny ink">FRAME</text><text x="150" y="35" class="tiny ink">FILTER</text><text x="215" y="35" class="tiny muted">STICKERS</text><text x="292" y="35" class="tiny muted">TEXT</text></g>
+  </g>
+
+  <g id="screen-11-decorate-editor" transform="translate(920 2360)">
+    <text y="-20" class="label ink">11 · Editor · Stickers &amp; text</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="24" y="44" class="label ink">Customize</text><text x="336" y="44" class="label right ink">Done</text>
+    <g transform="translate(48 70)"><rect width="264" height="366" rx="18" fill="#C9DCEE"/><rect x="22" y="38" width="103" height="126" rx="4" fill="url(#photo4)" transform="rotate(-5 73 101)"/><rect x="140" y="52" width="101" height="112" rx="4" fill="url(#photo1)" transform="rotate(4 190 108)"/><rect x="40" y="188" width="115" height="104" rx="4" fill="url(#photo3)" transform="rotate(2 97 240)"/><rect x="165" y="182" width="78" height="110" rx="4" fill="url(#photo2)" transform="rotate(-3 204 237)"/><rect x="34" y="26" width="52" height="12" rx="4" fill="#F4E4B2" opacity=".9" transform="rotate(-12 60 32)"/><path d="M212 30 l12 -17 M218 16 l-2 22" stroke="#E5786A" stroke-width="5" stroke-linecap="round"/><text x="132" y="330" class="serif center" font-size="17" font-style="italic" fill="#3A4D66">the ordinary days</text><text x="132" y="350" class="tiny center" fill="#4C6078">SINGAPORE · LONDON · CHENNAI</text></g>
+    <text x="24" y="472" class="tiny muted">STICKER PACKS</text>
+    <g transform="translate(24 488)"><rect width="74" height="66" rx="12" fill="#292723"/><text x="37" y="28" class="h3 center" fill="#FFF">✦ ♥</text><text x="37" y="54" class="tiny center" fill="#FFF">FRIENDS</text><rect x="84" width="74" height="66" rx="12" class="card"/><text x="121" y="28" class="h3 center ink">⌁ ✎</text><text x="121" y="54" class="tiny center ink">DOODLES</text><rect x="168" width="74" height="66" rx="12" class="card"/><text x="205" y="28" class="h3 center ink">▰ ⌑</text><text x="205" y="54" class="tiny center ink">TAPE</text><rect x="252" width="66" height="66" rx="12" class="card"/><text x="285" y="28" class="h3 center ink">✿</text><text x="285" y="54" class="tiny center ink">BLOOM</text></g>
+    <rect x="24" y="578" width="312" height="50" rx="14" class="card"/><text x="44" y="609" class="body muted">Add a caption or handwritten note…</text>
+    <g transform="translate(16 680)"><rect width="328" height="58" rx="22" fill="#FFFDF8" stroke="#D9D0C4"/><text x="30" y="35" class="tiny muted">LAYOUT</text><text x="92" y="35" class="tiny muted">FRAME</text><text x="150" y="35" class="tiny muted">FILTER</text><text x="214" y="35" class="tiny ink">STICKERS</text><text x="292" y="35" class="tiny ink">TEXT</text></g>
+  </g>
+
+  <g id="screen-12-export" transform="translate(1340 2360)">
+    <text y="-20" class="label ink">12 · Export &amp; handoff</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">Final details</text><text x="332" y="48" class="label right muted">Preview</text>
+    <text x="28" y="100" class="h2 ink">Ready to keep.</text><text x="28" y="130" class="body muted">Choose what appears on the final artifact.</text>
+    <g transform="translate(28 166)"><rect width="304" height="54" rx="14" class="card"/><text x="18" y="22" class="tiny muted">TITLE</text><text x="18" y="42" class="body ink">Four time zones, still us</text><rect y="66" width="304" height="54" rx="14" class="card"/><text x="18" y="88" class="tiny muted">CAPTION</text><text x="18" y="108" class="body ink">the ordinary days</text></g>
+    <g transform="translate(28 316)"><text class="tiny muted">SHOW ON ARTIFACT</text><rect y="18" width="304" height="52" rx="14" class="card"/><text x="18" y="50" class="body ink">Participant names</text><rect x="256" y="31" width="32" height="18" rx="9" fill="#292723"/><circle cx="279" cy="40" r="7" fill="#FFF"/><rect y="80" width="304" height="52" rx="14" class="card"/><text x="18" y="112" class="body ink">Date + location</text><rect x="256" y="93" width="32" height="18" rx="9" fill="#292723"/><circle cx="279" cy="102" r="7" fill="#FFF"/><rect y="142" width="304" height="52" rx="14" class="card"/><text x="18" y="174" class="body ink">Timecapsule mark</text><rect x="256" y="155" width="32" height="18" rx="9" fill="#D6CFC5"/><circle cx="265" cy="164" r="7" fill="#FFF"/></g>
+    <text x="28" y="552" class="tiny muted">DOWNLOAD QUALITY</text><g transform="translate(28 568)"><rect width="146" height="52" rx="14" fill="#292723"/><text x="73" y="23" class="label center" fill="#FFF">Social PNG</text><text x="73" y="40" class="tiny center" fill="#C8C3BC">1080 PX</text><rect x="158" width="146" height="52" rx="14" class="card"/><text x="231" y="23" class="label center ink">Print PNG</text><text x="231" y="40" class="tiny center muted">300 DPI</text></g>
+    <rect x="28" y="648" width="304" height="52" rx="26" class="btn"/><text x="180" y="680" class="btnText center">Generate download</text>
+    <text x="180" y="724" class="tiny center muted">PHOTOS STAY PRIVATE · NO PUBLIC FEED</text>
+  </g>
+
+  <!-- ROW 4: COMPLETION, PWA & REVEAL MOTION -->
+  <g id="motion-section" transform="translate(80 3180)">
+    <text class="tiny muted">POST-CAPTURE EXPERIENCE</text>
+    <text y="38" class="h2 ink">Upload → wait → push notification → live photo reveal</text>
+    <text y="66" class="body muted">The creator and participants can leave after confirming. The PWA brings them back only when the shared artifact is ready.</text>
+  </g>
+
+  <g id="screen-13-upload-complete" transform="translate(80 3300)">
+    <text y="-20" class="label ink">13 · Upload complete</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">timecapsule</text><text x="332" y="48" class="label right muted">Close</text>
+    <circle cx="180" cy="166" r="54" fill="#A9C7BD"/><path d="M154 166 l17 18 36 -42" fill="none" stroke="#FFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="180" y="250" class="h2 center ink">You're in.</text>
+    <text x="180" y="282" class="body center muted">Your photo is uploaded and hidden.</text>
+    <text x="180" y="302" class="body center muted">You can leave—we'll hold your place.</text>
+    <g transform="translate(28 346)"><rect width="304" height="166" rx="22" fill="#EEE7DD"/><text x="24" y="34" class="tiny muted">FOUR TIME ZONES, STILL US</text><text x="24" y="70" class="h3 ink">2 of 4 friends ready</text><rect x="24" y="92" width="256" height="8" rx="4" fill="#D4CCC0"/><rect x="24" y="92" width="128" height="8" rx="4" fill="#292723"/><circle cx="42" cy="128" r="15" fill="#E5786A"/><circle cx="78" cy="128" r="15" fill="#AFC4E6"/><circle cx="114" cy="128" r="15" fill="#FFFDF8" stroke="#BEB4A7" stroke-dasharray="3 3"/><circle cx="150" cy="128" r="15" fill="#FFFDF8" stroke="#BEB4A7" stroke-dasharray="3 3"/><text x="280" y="134" class="tiny right muted">2 LEFT</text></g>
+    <rect x="28" y="552" width="304" height="54" rx="27" class="btn"/><text x="180" y="585" class="btnText center">Notify me when it's ready</text>
+    <rect x="28" y="620" width="304" height="50" rx="25" class="card"/><text x="180" y="651" class="label center ink">Return to waiting room</text>
+    <text x="180" y="714" class="tiny center muted">ONE NOTIFICATION · NO STREAKS OR REMINDER SPAM</text>
+  </g>
+
+  <g id="screen-14-pwa-notifications" transform="translate(500 3300)">
+    <text y="-20" class="label ink">14 · PWA notifications</text>
+    <rect width="360" height="760" rx="34" class="screen" filter="url(#smallShadow)"/>
+    <text x="28" y="48" class="label ink">Get the reveal</text><text x="332" y="48" class="label right muted">Not now</text>
+    <g transform="translate(112 90)"><rect width="136" height="136" rx="30" fill="#292723"/><rect x="37" y="20" width="62" height="96" rx="3" fill="#FFFDF8"/><rect x="43" y="26" width="50" height="20" fill="url(#photo1)"/><rect x="43" y="52" width="50" height="20" fill="url(#photo2)"/><rect x="43" y="78" width="50" height="20" fill="url(#photo4)"/><text x="68" y="111" class="tiny center ink">TC</text></g>
+    <text x="180" y="278" class="h2 center ink">We'll tell you once.</text>
+    <text x="180" y="310" class="body center muted">Install Timecapsule, then allow a single</text><text x="180" y="330" class="body center muted">notification when this booth is complete.</text>
+    <g transform="translate(28 374)"><rect width="304" height="72" rx="16" class="card"/><circle cx="36" cy="36" r="18" fill="#EBD7CF"/><text x="36" y="42" class="label center ink">1</text><text x="68" y="31" class="label ink">Add to Home Screen</text><text x="68" y="51" class="body muted">Required for iPhone and iPad push</text><rect y="84" width="304" height="72" rx="16" class="card"/><circle cx="36" cy="120" r="18" fill="#DCE8E3"/><text x="36" y="126" class="label center ink">2</text><text x="68" y="115" class="label ink">Enable notifications</text><text x="68" y="135" class="body muted">Requested only after you tap below</text></g>
+    <rect x="28" y="568" width="304" height="54" rx="27" class="btn"/><text x="180" y="601" class="btnText center">Install &amp; enable</text>
+    <rect x="28" y="636" width="304" height="50" rx="25" class="card"/><text x="180" y="667" class="label center ink">Use this link instead</text>
+    <text x="180" y="722" class="tiny center muted">PERMISSION IS OPTIONAL AND CAN BE REVOKED ANYTIME</text>
+  </g>
+
+  <g id="screen-15-push" transform="translate(920 3300)">
+    <text y="-20" class="label ink">15 · Push notification</text>
+    <rect width="360" height="760" rx="34" fill="#202328" stroke="#292723" stroke-width="2" filter="url(#smallShadow)"/>
+    <text x="180" y="60" class="tiny center" fill="#DDE2E8">9:41</text>
+    <text x="180" y="128" class="serif center" font-size="56" fill="#FFF">9:41</text><text x="180" y="158" class="body center" fill="#DDE2E8">Sunday, 12 October</text>
+    <g transform="translate(18 206)" filter="url(#smallShadow)"><rect width="324" height="142" rx="24" fill="#F5F2EC" opacity=".96"/><rect x="16" y="16" width="42" height="42" rx="11" fill="#292723"/><text x="37" y="43" class="label center" fill="#FFF">TC</text><text x="72" y="31" class="label ink">TIMECAPSULE</text><text x="306" y="31" class="tiny right muted">now</text><text x="16" y="82" class="h3 ink">Your booth is ready ✦</text><text x="16" y="108" class="body ink">Four time zones, still us is complete.</text><text x="16" y="128" class="tiny muted">Tap to watch the photostrip print.</text></g>
+    <g transform="translate(54 442)" opacity=".45"><circle cx="24" cy="24" r="24" fill="#565B63"/><text x="24" y="30" class="label center" fill="#FFF">⌁</text><circle cx="102" cy="24" r="24" fill="#565B63"/><text x="102" y="30" class="label center" fill="#FFF">◐</text><circle cx="180" cy="24" r="24" fill="#565B63"/><text x="180" y="30" class="label center" fill="#FFF">▣</text><circle cx="258" cy="24" r="24" fill="#565B63"/><text x="258" y="30" class="label center" fill="#FFF">◉</text></g>
+    <text x="180" y="710" class="tiny center" fill="#AEB4BC">TAP OPENS THE PRIVATE REVEAL URL</text>
+  </g>
+
+  <g id="screen-16-print-animation" transform="translate(1340 3300)">
+    <text y="-20" class="label ink">16 · Live-print reveal</text>
+    <rect width="360" height="760" rx="34" fill="#292723" stroke="#292723" stroke-width="2" filter="url(#smallShadow)"/>
+    <text x="28" y="46" class="label" fill="#FFF">Your photobooth is ready</text><text x="332" y="46" class="label right" fill="#C8C1B6">Skip</text>
+    <text x="28" y="86" class="tiny" fill="#AAA49A">ANIMATION STORYBOARD</text>
+    <g transform="translate(24 110)">
+      <rect width="96" height="216" rx="16" fill="#1B1B1B" stroke="#555"/><rect x="18" y="24" width="60" height="14" rx="7" fill="#080808"/><rect x="27" y="36" width="42" height="12" fill="#FFFDF8"/><text x="48" y="198" class="tiny center" fill="#A8A8A8">0 MS</text>
+      <rect x="108" width="96" height="216" rx="16" fill="#1B1B1B" stroke="#555"/><rect x="126" y="24" width="60" height="14" rx="7" fill="#080808"/><rect x="135" y="36" width="42" height="90" fill="#FFFDF8"/><rect x="139" y="42" width="34" height="22" fill="url(#photo1)"/><rect x="139" y="69" width="34" height="22" fill="url(#photo2)"/><text x="156" y="198" class="tiny center" fill="#A8A8A8">520 MS</text>
+      <rect x="216" width="96" height="216" rx="16" fill="#1B1B1B" stroke="#555"/><rect x="234" y="24" width="60" height="14" rx="7" fill="#080808"/><rect x="243" y="36" width="42" height="142" fill="#FFFDF8"/><rect x="247" y="42" width="34" height="22" fill="url(#photo1)"/><rect x="247" y="69" width="34" height="22" fill="url(#photo2)"/><rect x="247" y="96" width="34" height="22" fill="url(#photo3)"/><rect x="247" y="123" width="34" height="22" fill="url(#photo4)"/><text x="264" y="160" class="tiny center ink">STILL US</text><text x="264" y="198" class="tiny center" fill="#A8A8A8">1100 MS</text>
+    </g>
+    <g transform="translate(24 356)"><text class="tiny" fill="#AAA49A">MOTION SPEC</text><rect y="18" width="312" height="160" rx="18" fill="#363431"/><text x="18" y="48" class="label" fill="#FFF">The strip prints downward from the slot</text><text x="18" y="76" class="body" fill="#CFC8BE">Translate Y: −110% → 0%</text><text x="18" y="99" class="body" fill="#CFC8BE">Duration: 1100 ms · delay: 180 ms</text><text x="18" y="122" class="body" fill="#CFC8BE">Ease: cubic-bezier(.16, 1, .3, 1)</text><text x="18" y="145" class="body" fill="#CFC8BE">Shadow deepens as more paper appears</text><text x="18" y="166" class="body" fill="#CFC8BE">Settle: subtle 8 px overshoot, no bounce loop</text></g>
+    <rect x="24" y="566" width="312" height="70" rx="18" fill="#EBD7CF"/><text x="42" y="592" class="label ink">Reduced motion</text><text x="42" y="615" class="body ink">Show the complete strip with a 180 ms fade.</text>
+    <rect x="24" y="662" width="312" height="50" rx="25" fill="#FFFDF8"/><text x="180" y="693" class="label center ink">Replay reveal</text>
+  </g>
+
+  <g id="interaction-spec" transform="translate(80 4140)">
+    <text class="tiny muted">EDITOR INTERACTION MODEL</text>
+    <g transform="translate(0 28)"><rect width="500" height="244" rx="24" fill="#FFFDF8" stroke="#D9D0C4"/><text x="24" y="38" class="h3 ink">Stickers</text><text x="24" y="68" class="body muted">Choose a themed pack → tap a sticker → insert at canvas center.</text><rect x="24" y="90" width="118" height="104" rx="14" fill="#C9DCEE"/><text x="83" y="147" class="h2 center ink">✦ ♥</text><rect x="38" y="104" width="90" height="76" fill="none" stroke="#292723" stroke-dasharray="5 4"/><circle cx="38" cy="104" r="7" fill="#292723"/><circle cx="128" cy="104" r="7" fill="#292723"/><circle cx="38" cy="180" r="7" fill="#292723"/><circle cx="128" cy="180" r="7" fill="#292723"/><text x="168" y="106" class="label ink">Selected-object actions</text><text x="168" y="132" class="body muted">Drag · pinch/resize · rotate · duplicate</text><text x="168" y="154" class="body muted">Bring forward/back · flip · delete</text><text x="168" y="184" class="tiny muted">44 PX MINIMUM HANDLES · SNAP GUIDES · UNDO/REDO</text></g>
+    <g transform="translate(526 28)"><rect width="500" height="244" rx="24" fill="#FFFDF8" stroke="#D9D0C4"/><text x="24" y="38" class="h3 ink">Text</text><text x="24" y="68" class="body muted">Add title, names, date, caption, or handwritten note.</text><rect x="24" y="92" width="170" height="92" rx="14" fill="#EBD7CF"/><text x="109" y="132" class="serif center" font-size="18" font-style="italic" fill="#292723">the ordinary days</text><rect x="38" y="106" width="142" height="48" fill="none" stroke="#292723" stroke-dasharray="5 4"/><circle cx="180" cy="106" r="7" fill="#292723"/><text x="218" y="104" class="label ink">Editable and movable</text><text x="218" y="130" class="body muted">Font pairing · size · color · alignment</text><text x="218" y="152" class="body muted">Curve/rotate · layer · duplicate · delete</text><text x="218" y="184" class="tiny muted">DOUBLE TAP TO EDIT · DRAG ANYWHERE ON SELECTION</text></g>
+    <g transform="translate(1052 28)"><rect width="528" height="244" rx="24" fill="#FFFDF8" stroke="#D9D0C4"/><text x="24" y="38" class="h3 ink">Layouts &amp; responsive rules</text><text x="24" y="68" class="body muted">Classic strip · horizontal · double strip · grid · editorial collage · freeform.</text><g transform="translate(24 92)"><rect width="58" height="92" rx="8" fill="#292723"/><rect x="8" y="8" width="42" height="14" fill="#FFF"/><rect x="8" y="27" width="42" height="14" fill="#FFF"/><rect x="8" y="46" width="42" height="14" fill="#FFF"/><rect x="8" y="65" width="42" height="14" fill="#FFF"/><rect x="76" width="94" height="92" rx="8" fill="#AFC4E6"/><rect x="84" y="8" width="35" height="35" fill="#FFF"/><rect x="127" y="8" width="35" height="35" fill="#FFF"/><rect x="84" y="51" width="35" height="33" fill="#FFF"/><rect x="127" y="51" width="35" height="33" fill="#FFF"/><rect x="188" width="118" height="92" rx="8" fill="#DCE8E3"/><rect x="198" y="12" width="52" height="38" fill="#FFF" transform="rotate(-4 224 31)"/><rect x="246" y="40" width="50" height="38" fill="#FFF" transform="rotate(5 271 59)"/></g><text x="350" y="112" class="label ink">Layout changes preserve content</text><text x="350" y="138" class="body muted">Reflow photos, stickers, and text</text><text x="350" y="160" class="body muted">without deleting or resetting edits.</text><text x="350" y="190" class="tiny muted">WARN ONLY WHEN AN ITEM WILL BE CROPPED</text></g>
+  </g>
+
+  <g id="handoff" transform="translate(80 4470)">
+    <text class="tiny muted">REPLIT HANDOFF · PWA + WEB PUSH · PRIVATE BOOTH SUBSCRIPTIONS · MOTION.DEV OR CSS KEYFRAMES · PRESERVE REDUCED MOTION · NO NOTIFICATION SPAM</text>
+  </g>
+</svg>

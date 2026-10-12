@@ -1,0 +1,17 @@
+{
+  "name": "Timecapsule",
+  "short_name": "Timecapsule",
+  "description": "Different places. One photobooth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF7F0",
+  "theme_color": "#FBF7F0",
+  "icons": [
+    {
+      "src": "/brand/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

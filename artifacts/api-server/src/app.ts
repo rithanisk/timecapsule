@@ -11,10 +11,14 @@ app.use(
     logger,
     serializers: {
       req(req) {
+        const safeUrl = req.url?.split("?")[0].replace(
+          /\/booths\/[^/]+/g,
+          "/booths/[private-token]",
+        );
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: safeUrl,
         };
       },
       res(res) {

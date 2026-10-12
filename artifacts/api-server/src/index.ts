@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { processReadyBoothNotifications } from "./lib/pushNotifications";
 
 const rawPort = process.env["PORT"];
 
@@ -23,3 +24,10 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 });
+
+const pushSchedule = setInterval(() => {
+  void processReadyBoothNotifications().catch((error) => {
+    logger.error({ err: error }, "Scheduled booth-ready notification scan failed");
+  });
+}, 60_000);
+pushSchedule.unref();
