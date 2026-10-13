@@ -136,6 +136,10 @@ router.post("/booths", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Add one slot name for each participant." });
     return;
   }
+  if (input.revealMode === "scheduled" && !input.scheduledRevealAt) {
+    res.status(400).json({ error: "Choose a reveal time for a scheduled booth." });
+    return;
+  }
 
   const privateToken = createToken();
   const creatorToken = createToken();
@@ -152,35 +156,37 @@ router.post("/booths", async (req, res): Promise<void> => {
   };
 
   try {
-    const [booth] = await db
-      .insert(boothsTable)
-      .values({
-        privateTokenHash: tokenHash(privateToken),
-        creatorTokenHash: tokenHash(creatorToken),
-        name: input.name.trim(),
-        subtitle: input.subtitle?.trim() ?? "",
-        occasion: input.occasion?.trim() ?? "",
-        participantCount: input.participantCount,
-        mode: input.mode,
-        layout: input.layout,
-        prompt: input.prompt,
-        countdownSeconds: input.countdownSeconds,
-        revealMode: input.revealMode,
-        scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
-        status: "collecting",
-        customization,
-        expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
-      })
-      .returning();
-
-    await db.insert(boothSlotsTable).values(
-      input.slots.map((displayName, position) => ({
-        boothId: booth.id,
-        position,
-        displayName: displayName.trim(),
-        claimStatus: "open",
-      })),
-    );
+    const booth = await db.transaction(async (tx) => {
+      const [createdBooth] = await tx
+        .insert(boothsTable)
+        .values({
+          privateTokenHash: tokenHash(privateToken),
+          creatorTokenHash: tokenHash(creatorToken),
+          name: input.name.trim(),
+          subtitle: input.subtitle?.trim() ?? "",
+          occasion: input.occasion?.trim() ?? "",
+          participantCount: input.participantCount,
+          mode: input.mode,
+          layout: input.layout,
+          prompt: input.prompt,
+          countdownSeconds: input.countdownSeconds,
+          revealMode: input.revealMode,
+          scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
+          status: "collecting",
+          customization,
+          expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+      await tx.insert(boothSlotsTable).values(
+        input.slots.map((displayName, position) => ({
+          boothId: createdBooth.id,
+          position,
+          displayName: displayName.trim(),
+          claimStatus: "open",
+        })),
+      );
+      return createdBooth;
+    });
 
     const response = CreateBoothResponse.parse({
       privateToken,
@@ -488,10 +494,14 @@ router.post(
         res.status(404).json({ error: "This booth could not be found." });
         return;
       }
+      const updatedState = await buildBoothState(updatedBooth, params.data.privateToken);
+      if (updatedState.revealAvailable) {
+        void sendBoothReadyNotifications(updatedBooth.id, updatedBooth.name).catch((error) =>
+          req.log.warn({ err: error }, "Could not send booth-ready notification"),
+        );
+      }
       res.json(
-        ConfirmBoothFrameResponse.parse(
-          await buildBoothState(updatedBooth, params.data.privateToken),
-        ),
+        ConfirmBoothFrameResponse.parse(updatedState),
       );
     } catch (error) {
       req.log.error({ err: error }, "Failed to confirm uploaded frame");
@@ -692,9 +702,13 @@ router.delete("/booths/:privateToken", async (req, res): Promise<void> => {
     for (const path of paths) {
       try {
         const file = await storage.getObjectEntityFile(path);
-        await file.delete();
+        await file.delete({ ignoreNotFound: true });
       } catch (error) {
-        req.log.warn({ err: error }, "Could not remove a booth image during deletion");
+        req.log.error({ err: error }, "Could not remove booth media during deletion");
+        res.status(503).json({
+          error: "The booth is still private, but a photo could not be deleted yet. Try again.",
+        });
+        return;
       }
     }
     await db.delete(boothsTable).where(eq(boothsTable.id, booth.id));

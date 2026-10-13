@@ -273,7 +273,7 @@ components:
         position: { type: integer }
         displayName: { type: string }
         claimStatus: { type: string, enum: [open, claimed, submitted] }
-        photoUrl: { type: ["string", "null"], format: uri }
+        photoUrl: { type: ["string", "null"], description: Relative private route; null until the reveal gate opens. }
     SlotClaimInput:
       type: object
       required: [displayName]

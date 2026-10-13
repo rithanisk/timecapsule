@@ -130,7 +130,10 @@ export interface BoothSlot {
   position: number;
   displayName: string;
   claimStatus: BoothSlotClaimStatus;
-  /** @nullable */
+  /**
+     * Relative private route; null until the reveal gate opens.
+     * @nullable
+     */
   photoUrl: string | null;
 }
 

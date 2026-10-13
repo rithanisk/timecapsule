@@ -499,16 +499,12 @@ export function NotificationsPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<(Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }) | null>(null);
   useEffect(() => {
-    const manifest = document.createElement('link');
-    manifest.rel = 'manifest';
-    manifest.href = '/brand/timecapsule.webmanifest';
-    document.head.appendChild(manifest);
     const listener = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> });
     };
     window.addEventListener('beforeinstallprompt', listener);
-    return () => { window.removeEventListener('beforeinstallprompt', listener); manifest.remove(); };
+    return () => { window.removeEventListener('beforeinstallprompt', listener); };
   }, []);
   const setup = async () => {
     if (!canOptIn) { setStatus('Confirm a frame first. The private link remains available at any time.'); return; }
@@ -517,13 +513,12 @@ export function NotificationsPage() {
       const result = await Notification.requestPermission();
       setPermission(result);
       if (result !== 'granted') { setStatus('No problem. Keep the private link so you can return.'); return; }
-      const registration = await navigator.serviceWorker.register('/sw.js');
       const ready = await navigator.serviceWorker.ready;
       const existing = await ready.pushManager.getSubscription();
       const normalizedKey = vapidKey.replace(/-/g, '+').replace(/_/g, '/');
       const paddedKey = normalizedKey + '='.repeat((4 - normalizedKey.length % 4) % 4);
       const applicationServerKey = Uint8Array.from(window.atob(paddedKey), (char) => char.charCodeAt(0));
-      const subscription = existing ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+      const subscription = existing ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
       const keys = subscription.toJSON().keys;
       if (!keys?.p256dh || !keys.auth) throw new Error('This browser did not provide a secure push subscription.');
       const data: PushSubscriptionInput = { endpoint: subscription.endpoint, expirationTime: subscription.expirationTime, keys: { p256dh: keys.p256dh, auth: keys.auth } };

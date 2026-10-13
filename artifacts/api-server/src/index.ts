@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { processReadyBoothNotifications } from "./lib/pushNotifications";
+import { purgeExpiredBooths } from "./lib/retention";
 
 const rawPort = process.env["PORT"];
 
@@ -31,3 +32,17 @@ const pushSchedule = setInterval(() => {
   });
 }, 60_000);
 pushSchedule.unref();
+
+const retentionSchedule = setInterval(() => {
+  void purgeExpiredBooths().catch((error) => {
+    logger.error({ err: error }, "Expired booth cleanup failed");
+  });
+}, 60 * 60 * 1000);
+retentionSchedule.unref();
+
+void processReadyBoothNotifications().catch((error) => {
+  logger.error({ err: error }, "Initial booth-ready notification scan failed");
+});
+void purgeExpiredBooths().catch((error) => {
+  logger.error({ err: error }, "Initial expired booth cleanup failed");
+});

@@ -105,7 +105,7 @@ export const CreateBoothResponse = zod.object({
   "position": zod.number().int(),
   "displayName": zod.string(),
   "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
-  "photoUrl": zod.string().url().nullable()
+  "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
@@ -193,7 +193,7 @@ export const GetBoothResponse = zod.object({
   "position": zod.number().int(),
   "displayName": zod.string(),
   "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
-  "photoUrl": zod.string().url().nullable()
+  "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
@@ -389,7 +389,7 @@ export const ConfirmBoothFrameResponse = zod.object({
   "position": zod.number().int(),
   "displayName": zod.string(),
   "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
-  "photoUrl": zod.string().url().nullable()
+  "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
