@@ -27,6 +27,9 @@ export const BoothInputLayout = {
   grid: 'grid',
   editorial: 'editorial',
   freeform: 'freeform',
+  'classic-strip': 'classic-strip',
+  'polaroid-stack': 'polaroid-stack',
+  'mixed-sizes': 'mixed-sizes',
 } as const;
 
 export type BoothInputCountdownSeconds = typeof BoothInputCountdownSeconds[keyof typeof BoothInputCountdownSeconds];
@@ -72,6 +75,11 @@ export interface BoothInput {
   /** @maxLength 120 */
   prompt: string;
   countdownSeconds: BoothInputCountdownSeconds;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  photosPerPerson?: number;
   revealMode: BoothInputRevealMode;
   /** @nullable */
   scheduledRevealAt?: string | null;
@@ -95,6 +103,9 @@ export const BoothStateLayout = {
   grid: 'grid',
   editorial: 'editorial',
   freeform: 'freeform',
+  'classic-strip': 'classic-strip',
+  'polaroid-stack': 'polaroid-stack',
+  'mixed-sizes': 'mixed-sizes',
 } as const;
 
 export type BoothStateRevealMode = typeof BoothStateRevealMode[keyof typeof BoothStateRevealMode];
@@ -155,6 +166,9 @@ export const CustomizationInputLayout = {
   grid: 'grid',
   editorial: 'editorial',
   freeform: 'freeform',
+  'classic-strip': 'classic-strip',
+  'polaroid-stack': 'polaroid-stack',
+  'mixed-sizes': 'mixed-sizes',
 } as const;
 
 export type CustomizationInputFrameType = typeof CustomizationInputFrameType[keyof typeof CustomizationInputFrameType];
@@ -168,6 +182,10 @@ export const CustomizationInputFrameType = {
   film: 'film',
   torn: 'torn',
   pattern: 'pattern',
+  retro: 'retro',
+  seasonal: 'seasonal',
+  whimsical: 'whimsical',
+  'film-noir': 'film-noir',
 } as const;
 
 export type CustomizationInputFilter = typeof CustomizationInputFilter[keyof typeof CustomizationInputFilter];
@@ -183,6 +201,23 @@ export const CustomizationInputFilter = {
   disposable: 'disposable',
   sepia: 'sepia',
   grain: 'grain',
+} as const;
+
+export type CustomizationInputCaptionPosition = typeof CustomizationInputCaptionPosition[keyof typeof CustomizationInputCaptionPosition];
+
+
+export const CustomizationInputCaptionPosition = {
+  bottom: 'bottom',
+  top: 'top',
+} as const;
+
+export type CustomizationInputCaptionFont = typeof CustomizationInputCaptionFont[keyof typeof CustomizationInputCaptionFont];
+
+
+export const CustomizationInputCaptionFont = {
+  serif: 'serif',
+  sans: 'sans',
+  handwritten: 'handwritten',
 } as const;
 
 export type CanvasObjectKind = typeof CanvasObjectKind[keyof typeof CanvasObjectKind];
@@ -233,6 +268,17 @@ export interface CanvasObject {
   zIndex: number;
 }
 
+export type CustomizationInputSlotAdjustmentsItem = {
+  slotIndex: number;
+  panX: number;
+  panY: number;
+  /**
+     * @minimum 1
+     * @maximum 3
+     */
+  scale: number;
+};
+
 export interface CustomizationInput {
   mode: CustomizationInputMode;
   layout: CustomizationInputLayout;
@@ -243,8 +289,11 @@ export interface CustomizationInput {
   showDate: boolean;
   /** @maxLength 120 */
   caption?: string;
+  captionPosition?: CustomizationInputCaptionPosition;
+  captionFont?: CustomizationInputCaptionFont;
   /** @maxItems 40 */
   objects: CanvasObject[];
+  slotAdjustments?: CustomizationInputSlotAdjustmentsItem[];
 }
 
 export interface BoothState {
@@ -256,6 +305,11 @@ export interface BoothState {
   layout: BoothStateLayout;
   prompt: string;
   countdownSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  photosPerPerson?: number;
   revealMode: BoothStateRevealMode;
   /** @nullable */
   scheduledRevealAt: string | null;

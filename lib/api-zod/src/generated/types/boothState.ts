@@ -21,6 +21,11 @@ export interface BoothState {
   layout: BoothStateLayout;
   prompt: string;
   countdownSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  photosPerPerson?: number;
   revealMode: BoothStateRevealMode;
   /** @nullable */
   scheduledRevealAt: Date | null;

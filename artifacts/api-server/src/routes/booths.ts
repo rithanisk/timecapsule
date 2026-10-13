@@ -95,6 +95,7 @@ async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof find
     layout: booth.layout,
     prompt: booth.prompt,
     countdownSeconds: booth.countdownSeconds,
+    photosPerPerson: booth.photosPerPerson ?? 1,
     revealMode: booth.revealMode,
     scheduledRevealAt: booth.scheduledRevealAt?.toISOString() ?? null,
     status: revealAvailable ? "revealed" : allSubmitted ? "complete" : "collecting",
@@ -132,6 +133,7 @@ router.post("/booths", async (req, res): Promise<void> => {
     return;
   }
   const input = parsed.data;
+  const photosPerPerson = input.photosPerPerson ?? 1;
   if (input.slots.length !== input.participantCount) {
     res.status(400).json({ error: "Add one slot name for each participant." });
     return;
@@ -165,7 +167,8 @@ router.post("/booths", async (req, res): Promise<void> => {
           name: input.name.trim(),
           subtitle: input.subtitle?.trim() ?? "",
           occasion: input.occasion?.trim() ?? "",
-          participantCount: input.participantCount,
+          participantCount: input.participantCount * photosPerPerson,
+          photosPerPerson,
           mode: input.mode,
           layout: input.layout,
           prompt: input.prompt,
@@ -177,14 +180,14 @@ router.post("/booths", async (req, res): Promise<void> => {
           expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
         })
         .returning();
-      await tx.insert(boothSlotsTable).values(
-        input.slots.map((displayName, position) => ({
-          boothId: createdBooth.id,
-          position,
-          displayName: displayName.trim(),
-          claimStatus: "open",
-        })),
-      );
+      const slotValues: Array<{ boothId: string; position: number; displayName: string; claimStatus: string }> = [];
+      let pos = 0;
+      for (const displayName of input.slots) {
+        for (let p = 0; p < photosPerPerson; p++) {
+          slotValues.push({ boothId: createdBooth.id, position: pos++, displayName: displayName.trim(), claimStatus: "open" });
+        }
+      }
+      await tx.insert(boothSlotsTable).values(slotValues);
       return createdBooth;
     });
 
@@ -266,17 +269,32 @@ router.post("/booths/:privateToken/slots/claim", async (req, res): Promise<void>
       if (assignedName && assignedName.toLowerCase() !== body.data.displayName.trim().toLowerCase()) {
         return "named-slot-mismatch" as const;
       }
-      const [claimed] = await tx
-        .update(boothSlotsTable)
-        .set({
-          displayName: assignedName || body.data.displayName.trim(),
-          claimStatus: "claimed",
-          claimTokenHash: tokenHash(participantToken),
-          claimedAt: new Date(),
-        })
-        .where(eq(boothSlotsTable.id, available.id))
-        .returning();
-      return claimed;
+      const finalName = assignedName || body.data.displayName.trim();
+      const hash = tokenHash(participantToken);
+
+      // Each participant owns one contiguous group, even when names repeat.
+      const groupStart = Math.floor(available.position / booth.photosPerPerson) * booth.photosPerPerson;
+      const groupSlots = await tx
+        .select()
+        .from(boothSlotsTable)
+        .where(and(
+          eq(boothSlotsTable.boothId, booth.id),
+          eq(boothSlotsTable.claimStatus, "open"),
+        ))
+        .orderBy(asc(boothSlotsTable.position))
+        .for("update");
+
+      const slotIds = groupSlots
+        .filter((s) => s.position >= groupStart && s.position < groupStart + booth.photosPerPerson)
+        .map((s) => s.id);
+      if (slotIds.length !== booth.photosPerPerson) return null;
+      for (const sid of slotIds) {
+        await tx
+          .update(boothSlotsTable)
+          .set({ displayName: finalName, claimStatus: "claimed", claimTokenHash: hash, claimedAt: new Date() })
+          .where(eq(boothSlotsTable.id, sid));
+      }
+      return { ...available, id: available.id, displayName: finalName };
     });
 
     if (slot === "named-slot-mismatch") {

@@ -36,6 +36,11 @@ export interface BoothInput {
   /** @maxLength 120 */
   prompt: string;
   countdownSeconds: BoothInputCountdownSeconds;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  photosPerPerson?: number;
   revealMode: BoothInputRevealMode;
   /** @nullable */
   scheduledRevealAt?: Date | null;

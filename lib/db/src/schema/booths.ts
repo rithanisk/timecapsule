@@ -25,6 +25,7 @@ export const boothsTable = pgTable(
     layout: text("layout").notNull(),
     prompt: text("prompt").notNull(),
     countdownSeconds: integer("countdown_seconds").notNull(),
+    photosPerPerson: integer("photos_per_person").notNull().default(1),
     revealMode: text("reveal_mode").notNull(),
     scheduledRevealAt: timestamp("scheduled_reveal_at", {
       withTimezone: true,

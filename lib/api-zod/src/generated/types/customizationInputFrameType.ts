@@ -17,4 +17,8 @@ export const CustomizationInputFrameType = {
   film: 'film',
   torn: 'torn',
   pattern: 'pattern',
+  retro: 'retro',
+  seasonal: 'seasonal',
+  whimsical: 'whimsical',
+  'film-noir': 'film-noir',
 } as const;

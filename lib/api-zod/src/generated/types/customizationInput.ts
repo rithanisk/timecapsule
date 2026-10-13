@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CanvasObject } from './canvasObject';
+import type { CustomizationInputCaptionFont } from './customizationInputCaptionFont';
+import type { CustomizationInputCaptionPosition } from './customizationInputCaptionPosition';
 import type { CustomizationInputFilter } from './customizationInputFilter';
 import type { CustomizationInputFrameType } from './customizationInputFrameType';
 import type { CustomizationInputLayout } from './customizationInputLayout';
 import type { CustomizationInputMode } from './customizationInputMode';
+import type { CustomizationInputSlotAdjustmentsItem } from './customizationInputSlotAdjustmentsItem';
 
 export interface CustomizationInput {
   mode: CustomizationInputMode;
@@ -21,6 +24,9 @@ export interface CustomizationInput {
   showDate: boolean;
   /** @maxLength 120 */
   caption?: string;
+  captionPosition?: CustomizationInputCaptionPosition;
+  captionFont?: CustomizationInputCaptionFont;
   /** @maxItems 40 */
   objects: CanvasObject[];
+  slotAdjustments?: CustomizationInputSlotAdjustmentsItem[];
 }

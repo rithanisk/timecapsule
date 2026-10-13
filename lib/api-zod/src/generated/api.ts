@@ -36,6 +36,9 @@ export const createBoothBodySlotsMax = 6;
 
 export const createBoothBodyPromptMax = 120;
 
+export const createBoothBodyPhotosPerPersonDefault = 1;
+export const createBoothBodyPhotosPerPersonMax = 4;
+
 
 
 export const CreateBoothBody = zod.object({
@@ -45,16 +48,22 @@ export const CreateBoothBody = zod.object({
   "participantCount": zod.number().int().min(createBoothBodyParticipantCountMin).max(createBoothBodyParticipantCountMax),
   "slots": zod.array(zod.string().max(createBoothBodySlotsItemMax)).min(createBoothBodySlotsMin).max(createBoothBodySlotsMax),
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
   "prompt": zod.string().max(createBoothBodyPromptMax),
   "countdownSeconds": zod.union([zod.literal(3),zod.literal(5),zod.literal(10)]),
+  "photosPerPerson": zod.number().int().min(1).max(createBoothBodyPhotosPerPersonMax).default(createBoothBodyPhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullish()
 })
 
+export const createBoothResponseStatePhotosPerPersonDefault = 1;
+export const createBoothResponseStatePhotosPerPersonMax = 4;
+
 export const createBoothResponseStateCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const createBoothResponseStateCustomizationCaptionMax = 120;
 
+export const createBoothResponseStateCustomizationCaptionPositionDefault = `bottom`;
+export const createBoothResponseStateCustomizationCaptionFontDefault = `serif`;
 export const createBoothResponseStateCustomizationObjectsItemIdMax = 60;
 
 export const createBoothResponseStateCustomizationObjectsItemLabelMax = 120;
@@ -81,6 +90,8 @@ export const createBoothResponseStateCustomizationObjectsItemZIndexMax = 100;
 
 export const createBoothResponseStateCustomizationObjectsMax = 40;
 
+export const createBoothResponseStateCustomizationSlotAdjustmentsItemScaleMax = 3;
+
 
 
 export const CreateBoothResponse = zod.object({
@@ -92,9 +103,10 @@ export const CreateBoothResponse = zod.object({
   "occasion": zod.string(),
   "participantCount": zod.number().int(),
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
   "prompt": zod.string(),
   "countdownSeconds": zod.number().int(),
+  "photosPerPerson": zod.number().int().min(1).max(createBoothResponseStatePhotosPerPersonMax).default(createBoothResponseStatePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
   "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
@@ -109,12 +121,14 @@ export const CreateBoothResponse = zod.object({
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
-  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
   "frameColor": zod.string().regex(createBoothResponseStateCustomizationFrameColorRegExp),
   "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
   "showDate": zod.boolean(),
   "caption": zod.string().max(createBoothResponseStateCustomizationCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(createBoothResponseStateCustomizationCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(createBoothResponseStateCustomizationCaptionFontDefault),
   "objects": zod.array(zod.object({
   "id": zod.string().max(createBoothResponseStateCustomizationObjectsItemIdMax),
   "kind": zod.enum(['text', 'sticker']),
@@ -126,7 +140,13 @@ export const CreateBoothResponse = zod.object({
   "rotation": zod.number().min(createBoothResponseStateCustomizationObjectsItemRotationMin).max(createBoothResponseStateCustomizationObjectsItemRotationMax),
   "color": zod.string().max(createBoothResponseStateCustomizationObjectsItemColorMax),
   "zIndex": zod.number().int().min(createBoothResponseStateCustomizationObjectsItemZIndexMin).max(createBoothResponseStateCustomizationObjectsItemZIndexMax)
-})).max(createBoothResponseStateCustomizationObjectsMax)
+})).max(createBoothResponseStateCustomizationObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(createBoothResponseStateCustomizationSlotAdjustmentsItemScaleMax)
+})).optional()
 })
 })
 })
@@ -143,9 +163,14 @@ export const GetBoothParams = zod.object({
   "privateToken": zod.coerce.string().min(getBoothPathPrivateTokenMin)
 })
 
+export const getBoothResponsePhotosPerPersonDefault = 1;
+export const getBoothResponsePhotosPerPersonMax = 4;
+
 export const getBoothResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const getBoothResponseCustomizationCaptionMax = 120;
 
+export const getBoothResponseCustomizationCaptionPositionDefault = `bottom`;
+export const getBoothResponseCustomizationCaptionFontDefault = `serif`;
 export const getBoothResponseCustomizationObjectsItemIdMax = 60;
 
 export const getBoothResponseCustomizationObjectsItemLabelMax = 120;
@@ -172,6 +197,8 @@ export const getBoothResponseCustomizationObjectsItemZIndexMax = 100;
 
 export const getBoothResponseCustomizationObjectsMax = 40;
 
+export const getBoothResponseCustomizationSlotAdjustmentsItemScaleMax = 3;
+
 
 
 export const GetBoothResponse = zod.object({
@@ -180,9 +207,10 @@ export const GetBoothResponse = zod.object({
   "occasion": zod.string(),
   "participantCount": zod.number().int(),
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
   "prompt": zod.string(),
   "countdownSeconds": zod.number().int(),
+  "photosPerPerson": zod.number().int().min(1).max(getBoothResponsePhotosPerPersonMax).default(getBoothResponsePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
   "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
@@ -197,12 +225,14 @@ export const GetBoothResponse = zod.object({
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
-  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
   "frameColor": zod.string().regex(getBoothResponseCustomizationFrameColorRegExp),
   "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
   "showDate": zod.boolean(),
   "caption": zod.string().max(getBoothResponseCustomizationCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(getBoothResponseCustomizationCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(getBoothResponseCustomizationCaptionFontDefault),
   "objects": zod.array(zod.object({
   "id": zod.string().max(getBoothResponseCustomizationObjectsItemIdMax),
   "kind": zod.enum(['text', 'sticker']),
@@ -214,7 +244,13 @@ export const GetBoothResponse = zod.object({
   "rotation": zod.number().min(getBoothResponseCustomizationObjectsItemRotationMin).max(getBoothResponseCustomizationObjectsItemRotationMax),
   "color": zod.string().max(getBoothResponseCustomizationObjectsItemColorMax),
   "zIndex": zod.number().int().min(getBoothResponseCustomizationObjectsItemZIndexMin).max(getBoothResponseCustomizationObjectsItemZIndexMax)
-})).max(getBoothResponseCustomizationObjectsMax)
+})).max(getBoothResponseCustomizationObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(getBoothResponseCustomizationSlotAdjustmentsItemScaleMax)
+})).optional()
 })
 })
 
@@ -339,9 +375,14 @@ export const ConfirmBoothFrameBody = zod.object({
   "captureSource": zod.enum(['camera', 'upload'])
 })
 
+export const confirmBoothFrameResponsePhotosPerPersonDefault = 1;
+export const confirmBoothFrameResponsePhotosPerPersonMax = 4;
+
 export const confirmBoothFrameResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const confirmBoothFrameResponseCustomizationCaptionMax = 120;
 
+export const confirmBoothFrameResponseCustomizationCaptionPositionDefault = `bottom`;
+export const confirmBoothFrameResponseCustomizationCaptionFontDefault = `serif`;
 export const confirmBoothFrameResponseCustomizationObjectsItemIdMax = 60;
 
 export const confirmBoothFrameResponseCustomizationObjectsItemLabelMax = 120;
@@ -368,6 +409,8 @@ export const confirmBoothFrameResponseCustomizationObjectsItemZIndexMax = 100;
 
 export const confirmBoothFrameResponseCustomizationObjectsMax = 40;
 
+export const confirmBoothFrameResponseCustomizationSlotAdjustmentsItemScaleMax = 3;
+
 
 
 export const ConfirmBoothFrameResponse = zod.object({
@@ -376,9 +419,10 @@ export const ConfirmBoothFrameResponse = zod.object({
   "occasion": zod.string(),
   "participantCount": zod.number().int(),
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
   "prompt": zod.string(),
   "countdownSeconds": zod.number().int(),
+  "photosPerPerson": zod.number().int().min(1).max(confirmBoothFrameResponsePhotosPerPersonMax).default(confirmBoothFrameResponsePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
   "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
@@ -393,12 +437,14 @@ export const ConfirmBoothFrameResponse = zod.object({
 })),
   "customization": zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
-  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
   "frameColor": zod.string().regex(confirmBoothFrameResponseCustomizationFrameColorRegExp),
   "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
   "showDate": zod.boolean(),
   "caption": zod.string().max(confirmBoothFrameResponseCustomizationCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(confirmBoothFrameResponseCustomizationCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(confirmBoothFrameResponseCustomizationCaptionFontDefault),
   "objects": zod.array(zod.object({
   "id": zod.string().max(confirmBoothFrameResponseCustomizationObjectsItemIdMax),
   "kind": zod.enum(['text', 'sticker']),
@@ -410,7 +456,13 @@ export const ConfirmBoothFrameResponse = zod.object({
   "rotation": zod.number().min(confirmBoothFrameResponseCustomizationObjectsItemRotationMin).max(confirmBoothFrameResponseCustomizationObjectsItemRotationMax),
   "color": zod.string().max(confirmBoothFrameResponseCustomizationObjectsItemColorMax),
   "zIndex": zod.number().int().min(confirmBoothFrameResponseCustomizationObjectsItemZIndexMin).max(confirmBoothFrameResponseCustomizationObjectsItemZIndexMax)
-})).max(confirmBoothFrameResponseCustomizationObjectsMax)
+})).max(confirmBoothFrameResponseCustomizationObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(confirmBoothFrameResponseCustomizationSlotAdjustmentsItemScaleMax)
+})).optional()
 })
 })
 
@@ -437,6 +489,8 @@ export const SaveBoothCustomizationHeader = zod.object({
 export const saveBoothCustomizationBodyFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const saveBoothCustomizationBodyCaptionMax = 120;
 
+export const saveBoothCustomizationBodyCaptionPositionDefault = `bottom`;
+export const saveBoothCustomizationBodyCaptionFontDefault = `serif`;
 export const saveBoothCustomizationBodyObjectsItemIdMax = 60;
 
 export const saveBoothCustomizationBodyObjectsItemLabelMax = 120;
@@ -463,16 +517,20 @@ export const saveBoothCustomizationBodyObjectsItemZIndexMax = 100;
 
 export const saveBoothCustomizationBodyObjectsMax = 40;
 
+export const saveBoothCustomizationBodySlotAdjustmentsItemScaleMax = 3;
+
 
 
 export const SaveBoothCustomizationBody = zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
-  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
   "frameColor": zod.string().regex(saveBoothCustomizationBodyFrameColorRegExp),
   "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
   "showDate": zod.boolean(),
   "caption": zod.string().max(saveBoothCustomizationBodyCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(saveBoothCustomizationBodyCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(saveBoothCustomizationBodyCaptionFontDefault),
   "objects": zod.array(zod.object({
   "id": zod.string().max(saveBoothCustomizationBodyObjectsItemIdMax),
   "kind": zod.enum(['text', 'sticker']),
@@ -484,12 +542,20 @@ export const SaveBoothCustomizationBody = zod.object({
   "rotation": zod.number().min(saveBoothCustomizationBodyObjectsItemRotationMin).max(saveBoothCustomizationBodyObjectsItemRotationMax),
   "color": zod.string().max(saveBoothCustomizationBodyObjectsItemColorMax),
   "zIndex": zod.number().int().min(saveBoothCustomizationBodyObjectsItemZIndexMin).max(saveBoothCustomizationBodyObjectsItemZIndexMax)
-})).max(saveBoothCustomizationBodyObjectsMax)
+})).max(saveBoothCustomizationBodyObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(saveBoothCustomizationBodySlotAdjustmentsItemScaleMax)
+})).optional()
 })
 
 export const saveBoothCustomizationResponseFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const saveBoothCustomizationResponseCaptionMax = 120;
 
+export const saveBoothCustomizationResponseCaptionPositionDefault = `bottom`;
+export const saveBoothCustomizationResponseCaptionFontDefault = `serif`;
 export const saveBoothCustomizationResponseObjectsItemIdMax = 60;
 
 export const saveBoothCustomizationResponseObjectsItemLabelMax = 120;
@@ -516,16 +582,20 @@ export const saveBoothCustomizationResponseObjectsItemZIndexMax = 100;
 
 export const saveBoothCustomizationResponseObjectsMax = 40;
 
+export const saveBoothCustomizationResponseSlotAdjustmentsItemScaleMax = 3;
+
 
 
 export const SaveBoothCustomizationResponse = zod.object({
   "mode": zod.enum(['classic', 'scrapbook']),
-  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform']),
-  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
   "frameColor": zod.string().regex(saveBoothCustomizationResponseFrameColorRegExp),
   "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
   "showDate": zod.boolean(),
   "caption": zod.string().max(saveBoothCustomizationResponseCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(saveBoothCustomizationResponseCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(saveBoothCustomizationResponseCaptionFontDefault),
   "objects": zod.array(zod.object({
   "id": zod.string().max(saveBoothCustomizationResponseObjectsItemIdMax),
   "kind": zod.enum(['text', 'sticker']),
@@ -537,7 +607,13 @@ export const SaveBoothCustomizationResponse = zod.object({
   "rotation": zod.number().min(saveBoothCustomizationResponseObjectsItemRotationMin).max(saveBoothCustomizationResponseObjectsItemRotationMax),
   "color": zod.string().max(saveBoothCustomizationResponseObjectsItemColorMax),
   "zIndex": zod.number().int().min(saveBoothCustomizationResponseObjectsItemZIndexMin).max(saveBoothCustomizationResponseObjectsItemZIndexMax)
-})).max(saveBoothCustomizationResponseObjectsMax)
+})).max(saveBoothCustomizationResponseObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(saveBoothCustomizationResponseSlotAdjustmentsItemScaleMax)
+})).optional()
 })
 
 

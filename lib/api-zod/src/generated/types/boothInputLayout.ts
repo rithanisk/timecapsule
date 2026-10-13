@@ -16,4 +16,7 @@ export const BoothInputLayout = {
   grid: 'grid',
   editorial: 'editorial',
   freeform: 'freeform',
+  'classic-strip': 'classic-strip',
+  'polaroid-stack': 'polaroid-stack',
+  'mixed-sizes': 'mixed-sizes',
 } as const;

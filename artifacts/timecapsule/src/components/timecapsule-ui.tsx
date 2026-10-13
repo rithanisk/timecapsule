@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Image, Link2, LoaderCircle, LockKeyhole, Palette, Share2, Sparkles, Trash2 } from 'lucide-react';
 
@@ -45,31 +45,45 @@ export function ProgressDots({ total, complete }: { total: number; complete: num
   </div>;
 }
 
-export function FramePreview({ photos, layout, mode, caption, frameColor = '#fffdf8', compact = false, filter = 'original', frameType = 'clean', objects = [], showDate = true }: {
+export function FramePreview({ photos, layout, mode, caption, frameColor = '#fffdf8', compact = false, filter = 'original', frameType = 'clean', objects = [], showDate = true, captionPosition = 'bottom', captionFont = 'serif', slotAdjustments = [], renderCell, stickerImageMap = {} }: {
   photos: string[]; layout: string; mode?: string; caption?: string; frameColor?: string; compact?: boolean; filter?: string; frameType?: string;
   objects?: Array<{ id: string; kind: string; label: string; x: number; y: number; rotation: number; color: string; zIndex: number }>;
-  showDate?: boolean;
+  showDate?: boolean; captionPosition?: string; captionFont?: string;
+  slotAdjustments?: Array<{ slotIndex: number; panX: number; panY: number; scale: number }>;
+  renderCell?: (photo: string, index: number) => React.ReactNode;
+  stickerImageMap?: Record<string, string>;
 }) {
-  const isStrip = layout === 'vertical';
-  const cols = layout === 'horizontal' ? 'grid-cols-2' : layout === 'double' ? 'grid-cols-2' : layout === 'grid' || layout === 'freeform' ? 'grid-cols-2' : 'grid-cols-1';
-  const rows = layout === 'horizontal' ? 'grid-rows-2' : layout === 'double' ? 'grid-rows-1' : isStrip || layout === 'editorial' ? `grid-rows-${photos.length}` : 'grid-rows-2';
+  const isStrip = layout === 'vertical' || layout === 'classic-strip';
+  const cols = layout === 'polaroid-stack' ? '' : layout === 'horizontal' ? 'grid-cols-2' : layout === 'double' ? 'grid-cols-2' : layout === 'grid' || layout === 'freeform' ? 'grid-cols-2' : layout === 'mixed-sizes' ? 'grid-cols-2' : 'grid-cols-1';
   const displayPhotos = photos.length ? photos : Array.from({ length: 4 }, () => '');
-  return <div className={`photostrip relative ${mode === 'scrapbook' ? 'scrapbook' : ''} ${compact ? 'photostrip-compact' : ''} frame-${frameType || 'clean'}`} style={{ backgroundColor: mode === 'scrapbook' ? '#dce8e3' : frameColor }}>
-    <div className={`photo-grid ${cols} ${rows} ${layout} filter-${filter || 'original'}`} data-testid="artifact-preview">
-      {displayPhotos.slice(0, 6).map((photo, i) => <div key={i} className={`photo-cell tone-${i % 4}`} style={photo ? { backgroundImage: `url("${photo}")` } : undefined}>
-        {!photo && <div className="silhouette" aria-label={`Frame ${i + 1} waiting`}><span /></div>}
-      </div>)}
+  const fontClass = captionFont === 'handwritten' ? 'font-handwritten' : captionFont === 'sans' ? 'font-sans' : '';
+  const captionEl = caption ? <p className={`photostrip-caption ${fontClass}`}>{caption}</p> : null;
+  return <div className={`photostrip relative ${mode === 'scrapbook' ? 'scrapbook' : ''} ${compact ? 'photostrip-compact' : ''} ${isStrip ? 'layout-strip' : ''} frame-${frameType || 'clean'}`} style={{ backgroundColor: mode === 'scrapbook' ? '#dce8e3' : frameColor }}>
+    {captionPosition === 'top' && captionEl}
+    <div className={`photo-grid ${cols} ${layout} filter-${filter || 'original'}`} data-testid="artifact-preview">
+      {displayPhotos.map((photo, i) => {
+        if (renderCell) return renderCell(photo, i);
+        const adj = slotAdjustments?.find((a) => a.slotIndex === i);
+        const cellStyle: React.CSSProperties = photo ? {
+          backgroundImage: `url("${photo}")`,
+          ...(adj ? { backgroundPosition: `${50 - adj.panX * 50}% ${50 - adj.panY * 50}%`, backgroundSize: `${(adj.scale ?? 1) * 100}%` } : {}),
+        } : {};
+        return <div key={i} className={`photo-cell tone-${i % 4}`} style={cellStyle}>
+          {!photo && <div className="silhouette" aria-label={`Frame ${i + 1} waiting`}><span /></div>}
+        </div>;
+      })}
     </div>
-    {caption && <p className="photostrip-caption">{caption}</p>}
-    {objects.map((object) => <span key={object.id} className={`artifact-object artifact-object-${object.kind}`} style={{ left: `${object.x * 100}%`, top: `${object.y * 100}%`, zIndex: object.zIndex, color: object.color, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)` }}>{object.label}</span>)}
+    {captionPosition !== 'top' && captionEl}
+    {objects.map((object) => <span key={object.id} className={`artifact-object artifact-object-${object.kind}`} style={{ left: `${object.x * 100}%`, top: `${object.y * 100}%`, zIndex: object.zIndex, color: object.color, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)` }}>{object.kind === 'sticker' && stickerImageMap?.[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-8 object-contain sm:size-12" /> : object.label}</span>)}
     {showDate && !compact && <small className="photostrip-date">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</small>}
     {!compact && <small className="photostrip-mark">DIFFERENT PLACES · ONE PHOTOBOOTH</small>}
   </div>;
 }
 
 export function CopyButton({ text, children = 'Copy link' }: { text: string; children?: ReactNode }) {
-  const copy = async () => { try { await navigator.clipboard.writeText(text); } catch { window.prompt('Copy this private link', text); } };
-  return <Button variant="secondary" onClick={copy} data-testid="button-copy-link"><Copy size={16} />{children}</Button>;
+  const [copied, setCopied] = useState(false);
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { window.prompt('Copy this private link', text); } };
+  return <Button variant="secondary" onClick={copy} data-testid="button-copy-link">{copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} />{children}</>}</Button>;
 }
 
 export function SlotList({ slots, hidePhotos = false }: { slots: Array<{ id: string; displayName: string; claimStatus: string; photoUrl: string | null }>; hidePhotos?: boolean }) {
