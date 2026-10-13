@@ -103,39 +103,64 @@ export function HomePage() {
       : 'A private photobooth for the people you love. Take photos apart, reveal them together.';
   return <Shell>
     <TopBar />
-    <section className="mx-auto max-w-[850px] pb-8 pt-7 text-center sm:pt-10">
-      {/* Decorative hero area */}
-      <div className="home-hero" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
-        {/* Floating SVG icons */}
-        <img src={stickerCherry} alt="" className="home-deco" style={{ top: '6%', left: '8%', width: 36, transform: 'rotate(-15deg)' }} />
-        <img src={stickerFlower} alt="" className="home-deco" style={{ top: '12%', right: '10%', width: 32, transform: 'rotate(12deg)' }} />
-        <img src={stickerBird} alt="" className="home-deco" style={{ bottom: '18%', left: '5%', width: 34, transform: 'rotate(-8deg)' }} />
-        <img src={stickerStrawberry} alt="" className="home-deco" style={{ top: '38%', right: '4%', width: 30, transform: 'rotate(20deg)' }} />
-        <img src={stickerLeaf} alt="" className="home-deco" style={{ bottom: '10%', right: '12%', width: 28, transform: 'rotate(-25deg)' }} />
-        <img src={stickerConfetti} alt="" className="home-deco" style={{ top: '4%', left: '45%', width: 26, transform: 'rotate(8deg)' }} />
-        <img src={stickerCupcake} alt="" className="home-deco" style={{ bottom: '6%', left: '35%', width: 30, transform: 'rotate(5deg)' }} />
-        <img src={stickerFlamingo} alt="" className="home-deco" style={{ top: '55%', left: '2%', width: 32, transform: 'rotate(10deg)' }} />
-
-        {/* Sample photostrip on left */}
-        <div className="home-sample-strip home-sample-left">
+    <section className="mx-auto max-w-[1000px] pb-8 pt-7 sm:pt-10">
+      {/* Collage hero — frames scattered around center text */}
+      <div className="home-collage" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
+        {/* Scattered frames — different sizes & rotations like sketch */}
+        <div className="collage-frame collage-tl" style={{ transform: 'rotate(-6deg)' }}>
           <FramePreview photos={[]} layout="vertical" mode="classic" compact frameType="clean" />
         </div>
-        {/* Sample photostrip on right */}
-        <div className="home-sample-strip home-sample-right">
+        <div className="collage-frame collage-tr" style={{ transform: 'rotate(4deg)' }}>
           <FramePreview photos={[]} layout="classic-strip" mode="classic" compact frameType="polaroid" />
         </div>
+        <div className="collage-frame collage-ml" style={{ transform: 'rotate(3deg)' }}>
+          <FramePreview photos={[]} layout="double" mode="classic" compact frameType="clean" />
+        </div>
+        <div className="collage-frame collage-mr" style={{ transform: 'rotate(-5deg)' }}>
+          <FramePreview photos={[]} layout="grid" mode="classic" compact frameType="retro" />
+        </div>
+        <div className="collage-frame collage-bl" style={{ transform: 'rotate(5deg)' }}>
+          <FramePreview photos={[]} layout="horizontal" mode="classic" compact frameType="film" />
+        </div>
+        <div className="collage-frame collage-br" style={{ transform: 'rotate(-3deg)' }}>
+          <FramePreview photos={[]} layout="polaroid-stack" mode="classic" compact frameType="polaroid" />
+        </div>
+        <div className="collage-frame collage-bc" style={{ transform: 'rotate(2deg)' }}>
+          <FramePreview photos={[]} layout="mixed-sizes" mode="scrapbook" compact frameType="torn" />
+        </div>
 
-        {/* Center welcome text */}
-        <div className="home-hero-center">
+        {/* Floating sticker decorations */}
+        <img src={stickerCherry} alt="" className="collage-sticker" style={{ top: '4%', left: '22%', width: 30, transform: 'rotate(-15deg)' }} />
+        <img src={stickerFlower} alt="" className="collage-sticker" style={{ top: '8%', right: '18%', width: 28, transform: 'rotate(12deg)' }} />
+        <img src={stickerBird} alt="" className="collage-sticker" style={{ bottom: '22%', left: '18%', width: 30, transform: 'rotate(-8deg)' }} />
+        <img src={stickerStrawberry} alt="" className="collage-sticker" style={{ top: '45%', right: '2%', width: 26, transform: 'rotate(20deg)' }} />
+        <img src={stickerLeaf} alt="" className="collage-sticker" style={{ bottom: '8%', right: '22%', width: 24, transform: 'rotate(-25deg)' }} />
+        <img src={stickerConfetti} alt="" className="collage-sticker" style={{ top: '2%', left: '48%', width: 24, transform: 'rotate(8deg)' }} />
+        <img src={stickerCupcake} alt="" className="collage-sticker" style={{ bottom: '4%', left: '40%', width: 26, transform: 'rotate(5deg)' }} />
+        <img src={stickerFlamingo} alt="" className="collage-sticker" style={{ top: '60%', left: '1%', width: 28, transform: 'rotate(10deg)' }} />
+        <img src={stickerPineapple} alt="" className="collage-sticker" style={{ top: '15%', left: '2%', width: 24, transform: 'rotate(-20deg)' }} />
+        <img src={stickerBanana} alt="" className="collage-sticker" style={{ bottom: '15%', right: '3%', width: 26, transform: 'rotate(15deg)' }} />
+        <img src={stickerChampagne} alt="" className="collage-sticker" style={{ top: '30%', left: '6%', width: 22, transform: 'rotate(6deg)' }} />
+        <img src={stickerPancake} alt="" className="collage-sticker" style={{ bottom: '2%', right: '42%', width: 24, transform: 'rotate(-10deg)' }} />
+        <img src={stickerWatermelon} alt="" className="collage-sticker" style={{ top: '70%', right: '15%', width: 26, transform: 'rotate(18deg)' }} />
+
+        {/* Center text overlay */}
+        <div className="collage-center">
           <h1 className="serif">{heroTitle}</h1>
-          <h1 className="serif home-hero-title">{(!user && !booth) ? 'timecapsule!' : ''}</h1>
-          <p className="home-hero-subtitle">{heroSubtitle}</p>
+          <h1 className="serif collage-title">{(!user && !booth) ? 'timecapsule!' : ''}</h1>
+          <p className="collage-subtitle">{heroSubtitle}</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            {booth
+              ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
+              : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}
+          </div>
+          {!user && !booth && <p className="mt-4 text-sm text-[#756f66]">
+            <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
+          </p>}
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap justify-center gap-3">{booth ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></> : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}</div>
-
-      {user && myBooths.length > 0 && <div className="mt-10 text-left">
+      {user && myBooths.length > 0 && <div className="mx-auto mt-10 max-w-[700px] text-left">
         <h2 className="serif mb-4 text-lg">Your booths</h2>
         <ul className="grid gap-3 sm:grid-cols-2">
           {myBooths.map((b) => <li key={b.id} className="flex items-center justify-between rounded-2xl border border-[#e3dcd1] bg-[#fffdf8] p-4">
@@ -144,10 +169,6 @@ export function HomePage() {
           </li>)}
         </ul>
       </div>}
-
-      {!user && !booth && <p className="mt-6 text-sm text-[#756f66]">
-        <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
-      </p>}
     </section>
   </Shell>;
 }
