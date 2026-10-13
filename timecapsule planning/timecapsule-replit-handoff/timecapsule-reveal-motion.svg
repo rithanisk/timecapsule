@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs>
+    <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9FB9C7"/><stop offset=".55" stop-color="#D8B7A1"/><stop offset="1" stop-color="#725D65"/></linearGradient>
+    <linearGradient id="p2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E6C4B5"/><stop offset=".55" stop-color="#AE8E9B"/><stop offset="1" stop-color="#473D4B"/></linearGradient>
+    <linearGradient id="p3" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C6D9B8"/><stop offset=".6" stop-color="#E9D2A7"/><stop offset="1" stop-color="#786D52"/></linearGradient>
+    <linearGradient id="p4" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B8C8E6"/><stop offset=".55" stop-color="#CAB1D9"/><stop offset="1" stop-color="#5C526D"/></linearGradient>
+    <clipPath id="printArea"><rect x="60" y="168" width="270" height="514" rx="12"/></clipPath>
+    <filter id="stripShadow" x="-30%" y="-20%" width="160%" height="160%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".38"/></filter>
+  </defs>
+  <rect width="390" height="844" rx="34" fill="#292723"/>
+  <text x="24" y="48" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="600" fill="#FFFDF8">Your photobooth is ready</text>
+  <text x="366" y="48" text-anchor="end" font-family="Inter,Arial,sans-serif" font-size="12" fill="#CFC8BE">Skip</text>
+  <text x="195" y="106" text-anchor="middle" font-family="Georgia,serif" font-size="26" font-weight="700" fill="#FFFDF8" opacity="0">Four time zones, still us
+    <animate attributeName="opacity" values="0;0;1" keyTimes="0;.84;1" dur="1.45s" begin="0s" fill="freeze"/>
+  </text>
+  <g clip-path="url(#printArea)">
+    <g filter="url(#stripShadow)">
+      <animateTransform attributeName="transform" type="translate" values="0,-520;0,8;0,0" keyTimes="0;.88;1" dur="1.1s" begin=".18s" fill="freeze" calcMode="spline" keySplines=".16 1 .3 1;.2 .8 .2 1"/>
+      <rect x="104" y="184" width="182" height="438" rx="4" fill="#FFFDF8"/>
+      <rect x="116" y="196" width="158" height="76" fill="url(#p1)"/><circle cx="195" cy="228" r="18" fill="#E6C2AF"/><path d="M154 272 Q195 226 236 272" fill="#51424E"/>
+      <rect x="116" y="280" width="158" height="76" fill="url(#p2)"/><circle cx="195" cy="312" r="18" fill="#E7C4B5"/><path d="M154 356 Q195 310 236 356" fill="#433B48"/>
+      <rect x="116" y="364" width="158" height="76" fill="url(#p3)"/><circle cx="195" cy="396" r="18" fill="#E4C3AB"/><path d="M154 440 Q195 394 236 440" fill="#5B5548"/>
+      <rect x="116" y="448" width="158" height="76" fill="url(#p4)"/><circle cx="195" cy="480" r="18" fill="#E1C2B6"/><path d="M154 524 Q195 478 236 524" fill="#514A5D"/>
+      <text x="195" y="556" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="9" font-weight="600" fill="#292723">SINGAPORE · LONDON · CHENNAI</text>
+      <text x="195" y="582" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-style="italic" fill="#292723">12 October 2026</text>
+    </g>
+  </g>
+  <rect x="72" y="150" width="246" height="42" rx="20" fill="#111"/>
+  <rect x="92" y="165" width="206" height="10" rx="5" fill="#030303"/>
+  <text x="195" y="716" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="12" fill="#CFC8BE" opacity="0">Different places. One photobooth.
+    <animate attributeName="opacity" values="0;0;1" keyTimes="0;.86;1" dur="1.5s" begin="0s" fill="freeze"/>
+  </text>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1" keyTimes="0;.82;1" dur="1.55s" begin="0s" fill="freeze"/>
+    <rect x="30" y="748" width="330" height="54" rx="27" fill="#FFFDF8"/>
+    <text x="195" y="781" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="600" fill="#292723">Download photostrip</text>
+  </g>
+</svg>

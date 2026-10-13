@@ -7,6 +7,7 @@ import NotFound from '@/pages/not-found';
 import {
   CapturePage,
   CreateBoothPage,
+  CreatorStylePage,
   BoothManagePage,
   EditorPage,
   HomePage,
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/join/:privateToken/capture" component={CapturePage} />
         <Route path="/join/:privateToken" component={JoinPage} />
         <Route path="/booth/:privateToken/reveal" component={RevealPage} />
+        <Route path="/booth/:privateToken/style" component={CreatorStylePage} />
         <Route path="/booth/:privateToken/edit" component={EditorPage} />
         <Route path="/booth/:privateToken/notifications" component={NotificationsPage} />
         <Route path="/booth/:privateToken" component={BoothManagePage} />

@@ -83,6 +83,7 @@ function LockGlyph() { return <span aria-hidden="true" className="inline-grid si
 export function CreateBoothPage() {
   const [, navigate] = useLocation();
   const createBooth = useCreateBooth();
+  const claimSlot = useClaimBoothSlot();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -101,7 +102,18 @@ export function CreateBoothPage() {
     const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode, layout, prompt, countdownSeconds, revealMode, scheduledRevealAt: revealMode === 'scheduled' && scheduledRevealAt ? new Date(scheduledRevealAt).toISOString() : null };
     createBooth.mutate({ data }, { onSuccess: (created) => {
       localStorage.setItem(creatorKey(created.privateToken), created.creatorToken);
-      navigate(`/booth/${created.privateToken}`);
+      const firstSlot = created.state.slots[0];
+      if (firstSlot) {
+        const claimData: SlotClaimInput = { displayName: names[0]?.trim() || 'You', slotId: firstSlot.id };
+        claimSlot.mutate({ privateToken: created.privateToken, data: claimData }, { onSuccess: (result) => {
+          localStorage.setItem(participantKey(created.privateToken, result.slotId), result.participantToken);
+          navigate(`/join/${created.privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
+        }, onError: () => {
+          navigate(`/booth/${created.privateToken}`);
+        } });
+      } else {
+        navigate(`/booth/${created.privateToken}`);
+      }
     } });
   };
   return <Shell><TopBar right={<span className="eyebrow">Create a private booth</span>} />
@@ -129,7 +141,8 @@ export function CreateBoothPage() {
           <p className="mt-6 flex items-center gap-2 text-sm text-[#6f685f]"><LockGlyph /> Photos remain hidden until every required frame is confirmed and the reveal time arrives.</p>
         </div>}
         {createBooth.isError && <div className="mt-5"><ErrorNote message={getError(createBooth.error)} /></div>}
-        <div className="mt-8 flex justify-end">{step < 3 ? <Button disabled={step === 1 && name.trim().length < 1} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || !name.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
+        {claimSlot.isError && <div className="mt-5"><ErrorNote message={getError(claimSlot.error)} /></div>}
+        <div className="mt-8 flex justify-end">{step < 3 ? <Button disabled={step === 1 && name.trim().length < 1} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
       </Panel>
     </div>
   </Shell>;
@@ -289,7 +302,13 @@ export function CapturePage() {
       await confirmFrame.mutateAsync({ privateToken, slotId, data: confirmData });
       localStorage.setItem(confirmedKey(privateToken, slotId), 'true');
       await queryClient.invalidateQueries({ queryKey: getGetBoothQueryKey(privateToken) });
-      navigate(`/booth/${privateToken}/notifications?confirmed=1`);
+      const isCreator = Boolean(localStorage.getItem(creatorKey(privateToken)));
+      if (isCreator && preview) {
+        sessionStorage.setItem(`tc-preview:${privateToken}`, preview);
+        navigate(`/booth/${privateToken}/style`);
+      } else {
+        navigate(`/booth/${privateToken}/notifications?confirmed=1`);
+      }
     } catch (reason) { setError(getError(reason)); }
   };
   if (!slotId || !token) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
@@ -314,8 +333,10 @@ export function CapturePage() {
       <div className="relative mx-auto aspect-[4/5] max-h-[66dvh] overflow-hidden rounded-[26px] bg-[#47433d]"><img src={preview} alt="Your photo preview" className="h-full w-full object-cover" style={{ transform: mirror && source === 'camera' ? 'scaleX(-1)' : undefined }} /></div>
       <div className="mx-auto mt-5 flex max-w-[460px] gap-3"><Button variant="secondary" className="flex-1" onClick={retake} disabled={photoBusy}>Retake</Button><Button variant="secondary" className="flex-1" onClick={() => setMirror((v) => !v)}>Mirror: {mirror ? 'on' : 'off'}</Button></div>
       {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
-      <Button className="mx-auto mt-4 flex w-full max-w-[460px] bg-[#fffdf8] !text-[#292723]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>Use this photo <Check size={17} /></>}</Button>
-      <p className="mt-4 text-center text-xs text-[#bdb6ad]">Visible only after every frame is confirmed.</p>
+      <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6">
+        <Button className="mx-auto flex w-full max-w-[460px] bg-[#fffdf8] !text-[#292723]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>Use this photo <Check size={17} /></>}</Button>
+        <p className="mt-2 text-center text-xs text-[#bdb6ad]">Visible only after every frame is confirmed.</p>
+      </div>
     </div>}
   </main>;
 }
@@ -487,6 +508,91 @@ export function EditorPage() {
   </Shell>;
 }
 
+const previewKey = (token: string) => `tc-preview:${token}`;
+
+export function CreatorStylePage() {
+  const { privateToken = '' } = useParams<{privateToken:string}>();
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+  const query = useBooth(privateToken);
+  const booth = query.data;
+  const creatorToken = localStorage.getItem(creatorKey(privateToken)) ?? '';
+  const save = useSaveBoothCustomization({ request: { headers: { 'X-Creator-Token': creatorToken } } });
+  const creatorPreview = sessionStorage.getItem(previewKey(privateToken)) ?? '';
+  const [frameType, setFrameType] = useState<CustomizationInput['frameType']>('clean');
+  const [frameColor, setFrameColor] = useState('#FFFDF8');
+  const [filter, setFilter] = useState<CustomizationInput['filter']>('original');
+
+  useEffect(() => {
+    if (booth) {
+      setFrameType(booth.customization?.frameType ?? 'clean');
+      setFrameColor(booth.customization?.frameColor ?? '#FFFDF8');
+      setFilter(booth.customization?.filter ?? 'original');
+    }
+  }, [booth]);
+
+  const photos = useMemo(() => {
+    if (!booth) return [];
+    return booth.slots.map((slot, i) => {
+      if (slot.photoUrl) return slot.photoUrl;
+      if (i === 0 && creatorPreview) return creatorPreview;
+      return '';
+    });
+  }, [booth, creatorPreview]);
+
+  const done = async () => {
+    if (!creatorToken || !booth) return;
+    const data: CustomizationInput = {
+      mode: booth.customization?.mode ?? booth.mode,
+      layout: booth.customization?.layout ?? booth.layout,
+      frameType,
+      frameColor,
+      filter,
+      showDate: booth.customization?.showDate ?? true,
+      caption: booth.customization?.caption ?? '',
+      objects: booth.customization?.objects ?? [],
+    };
+    try {
+      const saved = await save.mutateAsync({ privateToken, data });
+      queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
+      sessionStorage.removeItem(previewKey(privateToken));
+      navigate(`/booth/${privateToken}`);
+    } catch { /* Error shown via save.isError */ }
+  };
+
+  if (query.isLoading || !booth) return <Shell><TopBar /><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
+  if (!creatorToken) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Creator access needed.</h1><p className="text-[#6f685f]">Open this page on the device where you created the booth.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
+
+  return <Shell><TopBar right={<span className="eyebrow">Style your booth</span>} />
+    <div className="mx-auto max-w-[1100px] py-6">
+      <div className="mb-5"><p className="eyebrow">Almost there</p><h1 className="serif mt-1 text-4xl">Pick a look for your booth.</h1></div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(300px,.85fr)]">
+        <section className="flex min-h-[480px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:p-8">
+          <div className="w-full max-w-[390px]">
+            <FramePreview photos={photos} layout={booth.customization?.layout ?? booth.layout} mode={booth.customization?.mode ?? booth.mode} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} />
+          </div>
+        </section>
+        <section className="paper-card rounded-[22px] p-4 sm:p-6">
+          <div>
+            <h2 className="serif text-2xl">Frame style</h2>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{(['clean','black','solid','polaroid','film','torn','pattern'] as const).map((item) => <button key={item} aria-pressed={frameType === item} onClick={() => setFrameType(item)} className={`min-h-12 rounded-xl border capitalize ${frameType === item ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{item}</button>)}</div>
+          </div>
+          <div className="mt-6">
+            <p className="field-label">Paper color</p>
+            <div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={frameColor.toLowerCase() === color.toLowerCase()} onClick={() => setFrameColor(color)} className={`size-11 rounded-full border ${frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div>
+          </div>
+          <div className="mt-6">
+            <h2 className="serif text-2xl">Filter</h2>
+            <div className="mt-3 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-[68px] rounded-xl border p-2 text-center ${filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-1 block h-7 w-10 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div>
+          </div>
+          {save.isError && <div className="mt-4"><ErrorNote message={getError(save.error)} /></div>}
+          <Button className="mt-6 w-full" disabled={save.isPending} onClick={() => void done()}>{save.isPending ? <><LoaderCircle className="animate-spin" /> Saving…</> : <>Done <Check size={17} /></>}</Button>
+        </section>
+      </div>
+    </div>
+  </Shell>;
+}
+
 export function NotificationsPage() {
   const { privateToken = '' } = useParams<{privateToken:string}>();
   const query = useBooth(privateToken);
@@ -540,7 +646,7 @@ export function NotificationsPage() {
     setInstallPrompt(null);
   };
   const url = `${location.origin}/booth/${privateToken}`;
-  return <Shell><TopBar right={<span className="eyebrow">A small reminder, if you like</span>} /><div className="mx-auto max-w-[650px] py-10 sm:py-14">
+  return <Shell><TopBar right={<span className="eyebrow">Notifications</span>} /><div className="mx-auto max-w-[650px] py-10 sm:py-14">
     {confirmed && <div className="mb-5 rounded-2xl border border-[#c3d9cf] bg-[#e6f0eb] p-4 text-sm text-[#435c50]"><strong>Your frame is safely tucked away.</strong> It won’t be seen until everyone has confirmed.</div>}
     <Panel><p className="eyebrow text-[#e5786a]">✦ keep the link close</p><h1 className="serif mt-2 text-4xl sm:text-5xl">Come back when the booth is ready.</h1><p className="mt-3 leading-7 text-[#6f685f]">If you’d like, this device can let you know when the keepsake opens. You can also just keep the private link—no app or account needed.</p>
       <div className="mt-6 rounded-2xl bg-[#f0ebe3] p-5"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full bg-[#dce8e3]"><Heart size={20} /></span><div><strong>Keep your private link</strong><p className="mb-0 text-sm text-[#6f685f]">Anyone with the link can see the booth when it’s ready.</p></div></div><div className="mt-4 flex flex-wrap gap-3"><CopyButton text={url}><Link2 size={16} /> Copy booth link</CopyButton><a className="button-secondary inline-flex items-center no-underline" href={url}>Open booth</a></div></div>
