@@ -671,7 +671,8 @@ router.put("/booths/:privateToken/customization", async (req, res): Promise<void
   });
   const body = SaveBoothCustomizationBody.safeParse(req.body);
   if (!params.success || !headers.success || !body.success) {
-    res.status(400).json({ error: "Customization details are not valid." });
+    const fields = body.success ? [] : [...new Set(body.error.issues.map((issue) => issue.path.join(".") || "design"))];
+    res.status(400).json({ error: fields.length ? `Customization details are not valid: ${fields.join(", ")}.` : "Customization details are not valid." });
     return;
   }
   const booth = await findBooth(params.data.privateToken);

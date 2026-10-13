@@ -57,6 +57,7 @@ const creatorKey = (token: string) => `tc-creator:${token}`;
 const participantKey = (token: string, slotId: string) => `tc-participant:${token}:${slotId}`;
 const participantPrefix = (token: string) => `tc-participant:${token}:`;
 const confirmedKey = (token: string, slotId: string) => `tc-confirmed:${token}:${slotId}`;
+const activeBoothKey = 'tc-active-booth';
 
 function findAccessToken(privateToken: string) {
   const creator = localStorage.getItem(creatorKey(privateToken));
@@ -70,6 +71,9 @@ function findAccessToken(privateToken: string) {
 }
 
 function useBooth(privateToken: string) {
+  useEffect(() => {
+    if (privateToken) localStorage.setItem(activeBoothKey, privateToken);
+  }, [privateToken]);
   return useGetBooth(privateToken, { query: { queryKey: getGetBoothQueryKey(privateToken), enabled: Boolean(privateToken), refetchInterval: (query) => {
     const data = query.state.data as BoothState | undefined;
     return data && (data.revealAvailable || data.status === 'expired' || data.status === 'deleted') ? false : 7000;
@@ -83,35 +87,40 @@ function getError(error: unknown) {
 
 export function HomePage() {
   const [, navigate] = useLocation();
+  const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
+  const query = useBooth(activeToken);
+  const booth = query.data;
+  const nodes = booth?.slots ?? Array.from({ length: 6 }, (_, i) => ({ id: `sample-${i}`, displayName: `Frame ${i + 1}`, claimStatus: 'open', photoUrl: null }));
+  const submitted = booth?.completedCount ?? 0;
   return <Shell>
-    <TopBar right={<a href="#how" className="text-sm text-[#756f66] no-underline">How it works</a>} />
-    <section className="grid min-h-[650px] items-center gap-10 py-12 lg:grid-cols-[1.02fr_.98fr] lg:py-20">
-      <div className="max-w-[570px] animate-[fade-in_.6s_ease_both]">
-        <p className="eyebrow mb-5 flex items-center gap-2"><span className="size-2 rounded-full bg-[#e5786a]" /> A little togetherness, on your own time</p>
-        <h1 className="serif mb-6 text-[clamp(3.8rem,8vw,6.5rem)] leading-[.94] tracking-[-.045em]">Different places.<br /><em>One photobooth.</em></h1>
-        <p className="max-w-[470px] text-lg leading-8 text-[#6f685f]">A private photo booth for your people. Everyone takes a frame when they can. The whole picture stays tucked away until everyone is ready.</p>
-        <div className="mt-8 flex flex-wrap gap-3"><Button onClick={() => navigate('/create')}>Make a booth <ArrowRight size={17} /></Button><a href="#how" className="button-secondary inline-flex items-center no-underline">See how it works</a></div>
-        <div className="mt-8 flex items-center gap-3 text-sm text-[#756f66]"><LockGlyph /> No account for your friends. No frame revealed early.</div>
+    <TopBar right={<span className="eyebrow hidden sm:inline">Different places · one photobooth</span>} />
+    <section className="mx-auto max-w-[850px] pb-8 pt-7 text-center sm:pt-10">
+      <p className="eyebrow mb-2 text-[#e5786a]">{booth ? booth.name : 'A little togetherness, on your own time'}</p>
+      <div className="memory-map" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'A preview of a Timecapsule booth'}>
+        <svg className="memory-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {nodes.map((node, index) => {
+            const ringCount = nodes.length > 8 && index >= 8 ? nodes.length - 8 : Math.min(nodes.length, 8);
+            const ringIndex = nodes.length > 8 && index >= 8 ? index - 8 : index;
+            const radius = nodes.length > 8 && index < 8 ? 29 : 43;
+            const angle = -Math.PI / 2 + (2 * Math.PI * ringIndex) / ringCount;
+            return <line key={node.id} x1="50" y1="50" x2={50 + Math.cos(angle) * radius} y2={50 + Math.sin(angle) * radius} />;
+          })}
+        </svg>
+        <div className="memory-map-center"><span className="eyebrow">Your moments, together</span><h1 className="serif">timecapsule</h1><p>{booth ? `${submitted} of ${booth.participantCount} moments added` : 'Each photo finds its place here.'}</p></div>
+        {nodes.map((node, index) => {
+          const ringCount = nodes.length > 8 && index >= 8 ? nodes.length - 8 : Math.min(nodes.length, 8);
+          const ringIndex = nodes.length > 8 && index >= 8 ? index - 8 : index;
+          const radius = nodes.length > 8 && index < 8 ? 29 : 43;
+          const angle = -Math.PI / 2 + (2 * Math.PI * ringIndex) / ringCount;
+          const isReady = node.claimStatus === 'submitted';
+          return <div key={node.id} className={`memory-map-node tone-${index % 4} ${isReady ? 'is-ready' : ''} ${nodes.length > 12 ? 'is-small' : ''}`} style={{ left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%`, backgroundImage: booth?.revealAvailable && node.photoUrl ? `url("${node.photoUrl}")` : undefined }} title={`${node.displayName}: ${isReady ? 'photo added' : 'waiting'}`}>
+            {!booth?.revealAvailable || !node.photoUrl ? <span>{isReady ? <Check size={19} /> : index + 1}</span> : null}
+          </div>;
+        })}
       </div>
-      <div className="relative mx-auto w-full max-w-[510px] py-5">
-        <div className="absolute -left-2 top-14 h-48 w-44 rotate-[-8deg] rounded-[25px] bg-[#dce8e3] sm:-left-7" />
-        <div className="absolute -right-1 bottom-16 h-48 w-48 rotate-[7deg] rounded-[26px] bg-[#e8d8cb] sm:-right-6" />
-        <div className="relative mx-auto w-[min(100%,360px)] rotate-[2deg] rounded-[7px] bg-[#fffdf8] p-4 shadow-[0_22px_55px_rgba(55,43,32,.16)]">
-          <div className="grid gap-2">
-            {['tone-0','tone-1','tone-2','tone-3'].map((tone, i) => <div key={tone} className={`hero-photo ${tone}`}><div className="hero-person"><span /></div><small>{['A Sunday, somewhere','Just got home','Same silly faces','Until next time'][i]}</small></div>)}
-          </div>
-          <p className="serif mb-0 mt-4 text-center text-xl italic text-[#4b4842]">the ordinary days</p>
-        </div>
-        <div className="absolute right-3 top-1 rounded-full bg-[#e5786a] px-4 py-2 text-xs font-semibold text-white shadow-md">made across miles</div>
-      </div>
+      <p className="mx-auto max-w-md text-sm leading-6 text-[#6f685f]">{booth?.revealAvailable ? 'Everyone is here. Open your finished keepsake.' : 'Moments gather here as each person adds a photo. The photos stay private until everyone is ready.'}</p>
+      <div className="mt-5 flex flex-wrap justify-center gap-3">{booth ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></> : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}</div>
     </section>
-    <section id="how" className="grid gap-5 border-t border-[#d9d1c5] py-12 sm:grid-cols-3 sm:py-16">
-      {[['01','Set the scene','Name your booth, choose a look, and invite your favorite people.'],['02','Take your time','Each person claims a frame and snaps a photo whenever life allows.'],['03','Open it together','When every frame is confirmed, the finished keepsake is yours.']].map(([num,title,desc]) => <article key={num} className="py-3 sm:px-6"><span className="eyebrow text-[#e5786a]">{num} / A small ritual</span><h2 className="serif mt-4 text-3xl">{title}</h2><p className="mt-2 max-w-sm leading-7 text-[#6f685f]">{desc}</p></article>)}
-    </section>
-    <section className="rounded-[28px] bg-[#292723] px-6 py-10 text-[#fffdf8] sm:px-10 sm:py-12">
-      <div className="grid items-center gap-8 md:grid-cols-[1fr_auto]"><div><p className="eyebrow text-[#d6cbbd]">For the people you miss</p><h2 className="serif mt-2 text-4xl sm:text-5xl">Make room for one more memory.</h2><p className="mt-3 text-[#d6cfc5]">A sibling group chat. Your far-away best friend. The family that never gets one good photo.</p></div><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => navigate('/create')}>Start a booth <ArrowRight size={17} /></Button></div>
-    </section>
-    <footer className="flex flex-wrap items-center justify-between gap-4 py-8 text-xs text-[#756f66]"><span>timecapsule · Different places. One photobooth.</span><span className="inline-flex items-center gap-2"><LockGlyph /> Private by default</span></footer>
   </Shell>;
 }
 function LockGlyph() { return <span aria-hidden="true" className="inline-grid size-5 place-items-center rounded-full border border-[#d9d1c5] text-[10px]">●</span>; }
@@ -202,6 +211,7 @@ export function BoothManagePage() {
     if (!creatorToken || !window.confirm('Delete this booth and all of its frames? This cannot be undone.')) return;
     deleteBooth.mutate({ privateToken }, { onSuccess: () => {
       localStorage.removeItem(creatorKey(privateToken));
+      if (localStorage.getItem(activeBoothKey) === privateToken) localStorage.removeItem(activeBoothKey);
       Object.keys(localStorage).filter((key) => key.startsWith(participantPrefix(privateToken)) || key.startsWith(`tc-confirmed:${privateToken}:`)).forEach((key) => localStorage.removeItem(key));
       navigate('/');
     } });
@@ -294,6 +304,7 @@ export function CapturePage() {
   const currentSlotId = mySlots[currentPhotoIndex]?.id ?? slotId;
   const slot = boothQuery.data?.slots.find((s) => s.id === currentSlotId);
   const totalPhotos = mySlots.length || 1;
+  const allMySlotsSubmitted = mySlots.length > 0 && mySlots.every((s) => s.claimStatus === 'submitted');
   const requestUpload = useRequestFrameUpload({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const confirmFrame = useConfirmBoothFrame({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const queryClient = useQueryClient();
@@ -319,7 +330,11 @@ export function CapturePage() {
       setStreamError('');
     } catch { setStreamError('Camera permission was not available. Choose a photo from your device instead.'); }
   }, [facing]);
-  useEffect(() => { void cameraStart(); return () => streamRef.current?.getTracks().forEach((track) => track.stop()); }, [cameraStart]);
+  useEffect(() => {
+    if (!participantToken || !slotId || allMySlotsSubmitted) return;
+    void cameraStart();
+    return () => streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, [cameraStart, participantToken, slotId, allMySlotsSubmitted]);
   useEffect(() => () => { if (preview && !confirmedRef.current) URL.revokeObjectURL(preview); }, [preview]);
   const capture = () => {
     if (countdown !== null) return;
@@ -388,6 +403,8 @@ export function CapturePage() {
     } catch (reason) { setError(getError(reason)); }
   };
   if (!slotId || !token) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
+  if (boothQuery.isLoading) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
+  if (allMySlotsSubmitted) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel className="text-center"><h1 className="serif text-3xl">Your photos are in.</h1><p className="text-[#6f685f]">They’ll join the keepsake when everyone is ready.</p><Button onClick={() => navigate(localStorage.getItem(creatorKey(privateToken)) ? `/booth/${privateToken}/style` : `/booth/${privateToken}`)}>{localStorage.getItem(creatorKey(privateToken)) ? 'Style your booth' : 'View booth'}</Button></Panel></div></Shell>;
   const photoBusy = requestUpload.isPending || confirmFrame.isPending;
   return <main className="min-h-[100dvh] bg-[#292723] px-4 pb-10 text-[#fffdf8]">
     <header className="mx-auto flex min-h-[66px] max-w-[720px] items-center justify-between"><a href={`/join/${privateToken}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-[#ded7ce] no-underline"><ArrowLeft size={17} /> Invitation</a><span className="eyebrow text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`}</span></header>
@@ -409,8 +426,8 @@ export function CapturePage() {
       <div className="relative mx-auto aspect-[4/5] max-h-[66dvh] overflow-hidden rounded-[26px] bg-[#47433d]"><img src={preview} alt="Your photo preview" className="h-full w-full object-cover" style={{ transform: mirror && source === 'camera' ? 'scaleX(-1)' : undefined }} /></div>
       <div className="mx-auto mt-5 flex max-w-[460px] gap-3"><Button variant="secondary" className="flex-1" onClick={retake} disabled={photoBusy}>Retake</Button><Button variant="secondary" className="flex-1" onClick={() => setMirror((v) => !v)}>Mirror: {mirror ? 'on' : 'off'}</Button></div>
       {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
-      <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6">
-        <Button className="mx-auto flex w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] hover:bg-[#d96b5d] shadow-lg shadow-[#E5786A]/30" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>Use this photo <Check size={17} /></>}</Button>
+      <div className="sticky bottom-0 left-0 right-0 flex flex-col items-center bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6">
+        <Button className="w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] shadow-lg shadow-[#E5786A]/30 hover:bg-[#d96b5d]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>Use this photo <Check size={17} /></>}</Button>
         <p className="mt-2 text-center text-xs text-[#bdb6ad]">Visible only after every frame is confirmed.</p>
       </div>
     </div>}
@@ -506,7 +523,7 @@ export function RevealPage() {
     <header className="mx-auto flex min-h-[68px] max-w-[840px] items-center justify-between"><span className="font-semibold">timecapsule</span><button className="button-quiet !text-[#cfc8be]" onClick={() => setSkip(true)}>{skip ? 'Ready' : 'Skip reveal'}</button></header>
     <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-2 text-4xl sm:text-5xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-2 text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
       {!skip && <div className="reveal-machine-slot" />}
-      <div className="mx-auto mt-7 w-[min(100%,480px)] overflow-hidden rounded-[18px]"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} mode={booth.customization.mode || booth.mode} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
+      <div className="keepsake-preview mx-auto mt-7 w-[min(100%,480px)] overflow-hidden rounded-[18px]"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} mode={booth.customization.mode || booth.mode} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
       <div className={`mt-7 flex flex-wrap justify-center gap-3 ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button></div>
       {shareMessage && <p className="mt-3 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}<p className={`mt-5 text-sm text-[#cfc8be] ${skip ? '' : 'reveal-copy'}`}>Different places. One photobooth.</p>
     </div>
@@ -528,6 +545,14 @@ const defaultCustomization = (booth: BoothState): CustomizationInput => ({
 });
 const filters: Array<[CustomizationInput['filter'],string]> = [['original','Original'],['soft-bw','Soft B&W'],['high-contrast','Contrast'],['warm-film','Warm film'],['cool-flash','Cool flash'],['faded','Faded'],['disposable','Disposable'],['sepia','Sepia'],['grain','Grain']];
 const frameColors = ['#FFFDF8','#292723','#E5786A','#A9C7BD','#AFC4E6','#EBCB8B'];
+const frameTypes: CustomizationInput['frameType'][] = ['clean','black','solid','polaroid','film','torn','pattern','retro','seasonal','whimsical','film-noir'];
+
+function FrameTypePicker({ value, onChange }: { value: CustomizationInput['frameType']; onChange: (value: CustomizationInput['frameType']) => void }) {
+  return <div className="frame-type-picker" aria-label="Frame styles">{frameTypes.map((item) => <button key={item} type="button" aria-pressed={value === item} onClick={() => onChange(item)} className={`frame-type-option ${value === item ? 'is-selected' : ''}`}>
+    <span className="frame-option-preview"><FramePreview photos={['','']} layout="double" frameType={item} compact showDate={false} /></span>
+    <span>{item === 'film-noir' ? 'Film Noir' : item}</span>
+  </button>)}</div>;
+}
 
 export function EditorPage() {
   const { privateToken = '' } = useParams<{privateToken:string}>();
@@ -543,6 +568,8 @@ export function EditorPage() {
   const [redoHistory, setRedoHistory] = useState<CustomizationInput[]>([]);
   const [dirty, setDirty] = useState(false);
   const debounce = useRef<number | undefined>(undefined);
+  const editRevision = useRef(0);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const dragRef = useRef<{id:string; x:number;y:number; originX:number;originY:number;rect:DOMRect}|null>(null);
   useEffect(() => { if (booth) setCustom((existing) => existing ?? defaultCustomization(booth)); }, [booth]);
   const update = (patch: Partial<CustomizationInput>) => {
@@ -551,26 +578,31 @@ export function EditorPage() {
       setHistory((h) => [...h.slice(-19), current]);
       setRedoHistory([]);
       setDirty(true);
+      editRevision.current += 1;
       return { ...current, ...patch };
     });
   };
-  const saveNow = useCallback((value: CustomizationInput) => save.mutate({ privateToken, data: value }, { onSuccess: (saved) => {
-    queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
-    setDirty(false);
-  } }), [privateToken, save.mutate, queryClient]);
+  const saveNow = useCallback((value: CustomizationInput, revision: number) => {
+    const pending = saveQueue.current.catch(() => undefined).then(async () => {
+      const saved = await save.mutateAsync({ privateToken, data: value });
+      queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
+      if (editRevision.current === revision) setDirty(false);
+    });
+    saveQueue.current = pending;
+    return pending;
+  }, [privateToken, save.mutateAsync, queryClient]);
   const saveAndExit = async () => {
     if (!creatorToken || !custom) return;
+    window.clearTimeout(debounce.current);
     try {
-      const saved = await save.mutateAsync({ privateToken, data: custom });
-      queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
-      setDirty(false);
+      await saveNow(custom, editRevision.current);
       navigate(`/booth/${privateToken}/reveal`);
     } catch { /* The visible mutation error gives the user a retry path. */ }
   };
   useEffect(() => {
     if (!dirty || !custom || !creatorToken) return;
     window.clearTimeout(debounce.current);
-    debounce.current = window.setTimeout(() => saveNow(custom), 900);
+    debounce.current = window.setTimeout(() => { void saveNow(custom, editRevision.current).catch(() => undefined); }, 900);
     return () => window.clearTimeout(debounce.current);
   }, [custom, dirty, creatorToken, saveNow]);
   const addObject = (kind: 'sticker'|'text', label: string) => {
@@ -588,21 +620,21 @@ export function EditorPage() {
   if (query.isLoading || !booth || !custom) return <Shell><TopBar /><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
   if (!booth.revealAvailable) return <Shell><TopBar /><div className="mx-auto max-w-xl py-12"><Panel><h1 className="serif text-3xl">The keepsake will be ready soon.</h1><p>Customization opens once the full photobooth is revealed.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
   const colors = custom.frameColor;
-  const undo = () => { const previous = history.at(-1); if (!previous) return; setRedoHistory((v) => [...v,custom]); setCustom(previous); setHistory((v) => v.slice(0,-1)); setDirty(true); };
-  const redo = () => { const next = redoHistory.at(-1); if (!next) return; setHistory((v) => [...v,custom]); setCustom(next); setRedoHistory((v) => v.slice(0,-1)); setDirty(true); };
+  const undo = () => { const previous = history.at(-1); if (!previous) return; setRedoHistory((v) => [...v,custom]); setCustom(previous); setHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
+  const redo = () => { const next = redoHistory.at(-1); if (!next) return; setHistory((v) => [...v,custom]); setCustom(next); setRedoHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
   return <Shell><TopBar right={<div className="flex items-center gap-2"><button aria-label="Undo" className="button-quiet" disabled={!history.length} onClick={undo}>Undo</button><button aria-label="Redo" className="button-quiet" disabled={!redoHistory.length} onClick={redo}>Redo</button><Button disabled={!creatorToken || save.isPending} onClick={() => void saveAndExit()}>{save.isPending ? 'Saving…' : dirty ? 'Save & done' : 'Done'}</Button></div>} />
     <div className="mx-auto max-w-[1100px] py-6"><div className="mb-5"><p className="eyebrow">A keepsake, made yours</p><h1 className="serif mt-1 text-4xl">Customize the reveal</h1></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(340px,.9fr)]">
         <section className="flex min-h-[550px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:p-8">
           <div className="relative w-full max-w-[390px]" ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
-            <FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} mode={custom.mode} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} objects={custom.objects} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} />
-            {custom.objects.map((object) => <button key={object.id} className="absolute z-10 cursor-move touch-none rounded-md border border-dashed border-[#e5786a] bg-[#fffdf8]/75 px-2 py-1 text-sm" style={{ left: `${object.x*100}%`, top: `${object.y*100}%`, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)`, color: object.color }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const rect = event.currentTarget.parentElement?.getBoundingClientRect(); if (rect) { setHistory((items) => [...items.slice(-19), custom]); setRedoHistory([]); dragRef.current = { id: object.id, x: event.clientX, y: event.clientY, originX: object.x, originY: object.y, rect }; } }} onPointerMove={moveObject} onPointerUp={() => { dragRef.current = null; setDirty(true); }}>{object.label}</button>)}
+            <div className="keepsake-preview"><FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} mode={custom.mode} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} /></div>
+            {custom.objects.map((object) => <button key={object.id} className="absolute z-10 cursor-move touch-none rounded-md border border-dashed border-[#e5786a] bg-[#fffdf8]/75 px-2 py-1 text-sm" style={{ left: `${object.x*100}%`, top: `${object.y*100}%`, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)`, color: object.color }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const rect = event.currentTarget.parentElement?.getBoundingClientRect(); if (rect) { setHistory((items) => [...items.slice(-19), custom]); setRedoHistory([]); dragRef.current = { id: object.id, x: event.clientX, y: event.clientY, originX: object.x, originY: object.y, rect }; } }} onPointerMove={moveObject} onPointerUp={() => { dragRef.current = null; editRevision.current += 1; setDirty(true); }}>{object.kind === 'sticker' && stickerImageMap[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-10 object-contain" /> : object.label}</button>)}
           </div>
         </section>
         <section className="paper-card rounded-[22px] p-4 sm:p-6">
           <div role="tablist" aria-label="Customization tools" className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[#f0ebe3] p-1">{(['Layout','Frame','Filter','Stickers','Text'] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 flex-1 rounded-lg px-2 text-xs font-semibold sm:text-sm ${tab === item ? 'bg-[#fffdf8] shadow-sm' : 'text-[#756f66]'}`}>{item}</button>)}</div>
           {tab === 'Layout' && <div><h2 className="serif text-2xl">Arrange the moments</h2><p className="text-sm text-[#6f685f]">Changing the layout keeps every caption and decoration.</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} onClick={() => update({ layout: key as CustomizationInput['layout'] })} aria-pressed={custom.layout === key} className={`min-h-12 rounded-xl border p-2 text-sm ${custom.layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5]'}`}>{label}</button>)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm"><span>Scrapbook paper style</span><input type="checkbox" checked={custom.mode === 'scrapbook'} onChange={(e) => update({ mode: e.target.checked ? 'scrapbook' : 'classic' })} /></label></div>}
-          {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">{(['clean','black','solid','polaroid','film','torn','pattern','retro','seasonal','whimsical','film-noir'] as const).map((item) => <button key={item} aria-pressed={custom.frameType === item} onClick={() => update({ frameType: item })} className={`min-h-12 rounded-xl border px-2 text-sm capitalize ${custom.frameType === item ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{item === 'film-noir' ? 'Film Noir' : item}</button>)}</div><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
+          {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><FrameTypePicker value={custom.frameType} onChange={(frameType) => update({ frameType })} /><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
           {tab === 'Filter' && <div><h2 className="serif text-2xl">A little atmosphere</h2><div className="mt-4 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={custom.filter === value} onClick={() => update({ filter: value })} className={`min-h-[76px] rounded-xl border p-2 text-center ${custom.filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-2 block h-8 w-11 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div></div>}
           {tab === 'Stickers' && <div><h2 className="serif text-2xl">Add a tiny flourish</h2><p className="text-sm text-[#6f685f]">Pick one, then drag it anywhere on the paper.</p>
             <div className="grid grid-cols-2 gap-2">{[['✦','Little star'],['♥','Heart'],['✿','Bloom'],['⌁','Doodle'],['TAPE','Tape'],['✎','Note']].map(([symbol,label]) => <button key={label} onClick={() => addObject('sticker',symbol)} className="min-h-[56px] rounded-xl border border-[#d9d1c5] bg-[#fffdf8] text-sm"><span className="mr-2 text-lg text-[#e5786a]">{symbol}</span>{label}</button>)}</div>
@@ -684,15 +716,16 @@ export function CreatorStylePage() {
     <div className="mx-auto max-w-[1100px] py-6">
       <div className="mb-5"><p className="eyebrow">Almost there</p><h1 className="serif mt-1 text-4xl">Pick a look for your booth.</h1></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(300px,.85fr)]">
-        <section className="flex min-h-[480px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:p-8">
-          <div className="w-full max-w-[390px]">
-            <FramePreview photos={photos} layout={booth.customization?.layout ?? booth.layout} mode={booth.customization?.mode ?? booth.mode} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} />
+        <section className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:min-h-[480px] sm:p-8">
+          <div className="w-full max-w-[390px] text-center">
+            <div className="keepsake-preview"><FramePreview photos={photos.slice(0, 4)} layout={booth.customization?.layout ?? booth.layout} mode={booth.customization?.mode ?? booth.mode} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} /></div>
+            {photos.length > 4 && <p className="mb-0 mt-2 text-xs text-[#756f66]">Previewing 4 of {photos.length} frames</p>}
           </div>
         </section>
         <section className="paper-card rounded-[22px] p-4 sm:p-6">
           <div>
             <h2 className="serif text-2xl">Frame style</h2>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{(['clean','black','solid','polaroid','film','torn','pattern','retro','seasonal','whimsical','film-noir'] as const).map((item) => <button key={item} aria-pressed={frameType === item} onClick={() => setFrameType(item)} className={`min-h-12 rounded-xl border px-2 text-sm capitalize ${frameType === item ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{item === 'film-noir' ? 'Film Noir' : item}</button>)}</div>
+            <FrameTypePicker value={frameType} onChange={setFrameType} />
           </div>
           <div className="mt-6">
             <p className="field-label">Paper color</p>

@@ -1,6 +1,7 @@
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Image, Link2, LoaderCircle, LockKeyhole, Palette, Share2, Sparkles, Trash2 } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Image, Link2, LoaderCircle, LockKeyhole, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
 
 export function Brand({ light = false }: { light?: boolean }) {
   return <Link href="/" className={`brand ${light ? 'text-[#fffdf8]' : 'text-[#292723]'} inline-flex items-center gap-2 no-underline`} data-testid="link-home">
@@ -11,8 +12,26 @@ export function Brand({ light = false }: { light?: boolean }) {
 
 export function Shell({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
   return <main className={`min-h-[100dvh] ${dark ? 'bg-[#292723] text-[#fffdf8]' : 'text-[#292723]'}`}>
-    <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 sm:px-8">{children}</div>
+    <div className="mx-auto w-full max-w-[1180px] px-5 pb-28 sm:px-8 sm:pb-16">{children}</div>
+    <MobileNav />
   </main>;
+}
+
+function MobileNav() {
+  const [path, navigate] = useLocation();
+  const routeToken = path.match(/\/(?:booth|join)\/([^/]+)/)?.[1];
+  const token = routeToken ?? localStorage.getItem('tc-active-booth') ?? '';
+  const participantKey = token ? Object.keys(localStorage).find((key) => key.startsWith(`tc-participant:${token}:`)) : undefined;
+  const slotId = participantKey?.slice(`tc-participant:${token}:`.length);
+  const cameraPath = token ? slotId ? `/join/${token}/capture?slot=${encodeURIComponent(slotId)}` : `/join/${token}` : '/create';
+  const items = [
+    { label: 'Home', icon: Home, path: '/' },
+    { label: 'Booth', icon: Users, path: token ? `/booth/${token}` : '/create' },
+    { label: 'Camera', icon: Camera, path: cameraPath, featured: true },
+    { label: 'Invite', icon: Share2, path: token ? `/join/${token}` : '/create' },
+    { label: 'Keepsake', icon: Sparkles, path: token ? `/booth/${token}/reveal` : '/create' },
+  ];
+  return <nav className="mobile-nav" aria-label="Main navigation">{items.map(({ label, icon: Icon, path: target, featured }) => <button key={label} type="button" aria-label={label} aria-current={path === target ? 'page' : undefined} className={`mobile-nav-item ${featured ? 'mobile-nav-camera' : ''}`} onClick={() => navigate(target)}><Icon size={featured ? 24 : 20} strokeWidth={featured ? 2.2 : 1.8} /><span>{label}</span></button>)}</nav>;
 }
 
 export function TopBar({ right, dark = false }: { right?: ReactNode; dark?: boolean }) {
