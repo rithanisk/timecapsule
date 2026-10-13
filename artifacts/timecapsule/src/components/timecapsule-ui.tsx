@@ -1,7 +1,8 @@
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Image, Link2, LoaderCircle, LockKeyhole, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Image, Link2, LoaderCircle, LockKeyhole, LogOut, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 export function Brand({ light = false }: { light?: boolean }) {
   return <Link href="/" className={`brand ${light ? 'text-[#fffdf8]' : 'text-[#292723]'} inline-flex items-center gap-2 no-underline`} data-testid="link-home">
@@ -35,8 +36,18 @@ function MobileNav() {
 }
 
 export function TopBar({ right, dark = false }: { right?: ReactNode; dark?: boolean }) {
+  const { user, logout } = useAuth();
+  const defaultRight = user
+    ? <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}>
+        Hi, {user.displayName}!
+        <button type="button" onClick={() => void logout()} className="ml-1 inline-flex items-center gap-1 underline hover:opacity-70"><LogOut size={13} /> Sign out</button>
+      </span>
+    : <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}>
+        <LockKeyhole size={14} /> Private by default
+        <Link href="/login" className="ml-2 font-medium text-[#292723] underline">Sign in</Link>
+      </span>;
   return <header className="flex min-h-[76px] items-center justify-between border-b border-[#d9d1c5] dark:border-[#514d46]">
-    <Brand light={dark} />{right ?? <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}><LockKeyhole size={14} /> Private by default</span>}
+    <Brand light={dark} />{right ?? defaultRight}
   </header>;
 }
 
@@ -95,7 +106,7 @@ export function FramePreview({ photos, layout, mode, caption, frameColor = '#fff
     {captionPosition !== 'top' && captionEl}
     {objects.map((object) => <span key={object.id} className={`artifact-object artifact-object-${object.kind}`} style={{ left: `${object.x * 100}%`, top: `${object.y * 100}%`, zIndex: object.zIndex, color: object.color, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)` }}>{object.kind === 'sticker' && stickerImageMap?.[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-8 object-contain sm:size-12" /> : object.label}</span>)}
     {showDate && !compact && <small className="photostrip-date">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</small>}
-    {!compact && <small className="photostrip-mark">DIFFERENT PLACES · ONE PHOTOBOOTH</small>}
+{/* mark removed */}
   </div>;
 }
 

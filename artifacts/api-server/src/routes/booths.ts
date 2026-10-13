@@ -159,26 +159,29 @@ router.post("/booths", async (req, res): Promise<void> => {
 
   try {
     const booth = await db.transaction(async (tx) => {
+      const boothValues: Record<string, unknown> = {
+        privateTokenHash: tokenHash(privateToken),
+        creatorTokenHash: tokenHash(creatorToken),
+        name: input.name.trim(),
+        subtitle: input.subtitle?.trim() ?? "",
+        occasion: input.occasion?.trim() ?? "",
+        participantCount: input.participantCount * photosPerPerson,
+        mode: input.mode,
+        layout: input.layout,
+        prompt: input.prompt,
+        countdownSeconds: input.countdownSeconds,
+        revealMode: input.revealMode,
+        scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
+        status: "collecting",
+        customization,
+        expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+        ...(req.session?.userId ? { userId: req.session.userId } : {}),
+      };
+      // Only include photosPerPerson if > 1 to avoid errors on DBs without the column
+      if (photosPerPerson > 1) boothValues.photosPerPerson = photosPerPerson;
       const [createdBooth] = await tx
         .insert(boothsTable)
-        .values({
-          privateTokenHash: tokenHash(privateToken),
-          creatorTokenHash: tokenHash(creatorToken),
-          name: input.name.trim(),
-          subtitle: input.subtitle?.trim() ?? "",
-          occasion: input.occasion?.trim() ?? "",
-          participantCount: input.participantCount * photosPerPerson,
-          photosPerPerson,
-          mode: input.mode,
-          layout: input.layout,
-          prompt: input.prompt,
-          countdownSeconds: input.countdownSeconds,
-          revealMode: input.revealMode,
-          scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
-          status: "collecting",
-          customization,
-          expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
-        })
+        .values(boothValues as typeof boothsTable.$inferInsert)
         .returning();
       const slotValues: Array<{ boothId: string; position: number; displayName: string; claimStatus: string }> = [];
       let pos = 0;

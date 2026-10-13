@@ -15,6 +15,8 @@ import {
   NotificationsPage,
   RevealPage,
 } from '@/pages/timecapsule';
+import { LoginPage, RegisterPage } from '@/pages/auth';
+import { AuthProvider } from '@/hooks/use-auth';
 import {
   Route,
   Switch,
@@ -31,6 +33,8 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={HomePage} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
         <Route path="/create" component={CreateBoothPage} />
         <Route path="/join/:privateToken/capture" component={CapturePage} />
         <Route path="/join/:privateToken" component={JoinPage} />
@@ -58,12 +62,14 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
