@@ -1,0 +1,1 @@
+- [Timecapsule API routing](timecapsule-api-routing.md) — generated browser routes already include `/api`; frame claims must use the creator-assigned slot name.

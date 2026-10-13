@@ -177,8 +177,11 @@ export function JoinPage() {
   const [slotId, setSlotId] = useState('');
   const booth = query.data;
   const selectable = booth?.slots.filter((slot) => slot.claimStatus === 'open') ?? [];
+  const selectedSlot = selectable.find((slot) => slot.id === slotId) ?? selectable[0];
+  const assignedName = selectedSlot?.displayName.trim() ?? '';
+  const claimDisplayName = assignedName || displayName;
   const submit = () => {
-    const data: SlotClaimInput = { displayName: displayName.trim(), slotId: slotId || null };
+    const data: SlotClaimInput = { displayName: claimDisplayName.trim(), slotId: selectedSlot?.id ?? null };
     claim.mutate({ privateToken, data }, { onSuccess: (result) => {
       localStorage.setItem(participantKey(privateToken, result.slotId), result.participantToken);
       navigate(`/join/${privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
@@ -191,11 +194,11 @@ export function JoinPage() {
         {booth.revealAvailable ? <div className="mt-5 rounded-xl bg-[#e6f0eb] p-4 text-sm">This booth is ready to open. <button className="underline" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>See the finished keepsake</button></div> : <>
           <h2 className="serif mb-1 mt-7 text-3xl">Choose your frame.</h2><p className="mb-5 text-sm text-[#6f685f]">No account, no rush. Your photo stays private until everyone’s ready.</p>
           {selectable.length === 0 ? <div className="rounded-xl border border-dashed border-[#cfc5b7] p-5 text-center text-sm text-[#6f685f]">All the frames have been claimed. Ask the booth maker to share an open spot.</div> : <>
-            <label className="field-label" htmlFor="invite-name">Your name</label><input id="invite-name" data-testid="input-participant-name" className="input-paper mb-4" maxLength={30} placeholder="What should we call you?" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            <label className="field-label" htmlFor="invite-slot">Pick an open frame</label><select id="invite-slot" className="input-paper mb-5" value={slotId || selectable[0]?.id || ''} onChange={(e) => setSlotId(e.target.value)}>{selectable.map((slot) => <option key={slot.id} value={slot.id}>{slot.displayName || `Frame ${slot.position}`}</option>)}</select>
+            <label className="field-label" htmlFor="invite-slot">Pick your open frame</label><select id="invite-slot" className="input-paper mb-2" value={selectedSlot?.id ?? ''} onChange={(e) => setSlotId(e.target.value)}>{selectable.map((slot) => <option key={slot.id} value={slot.id}>{slot.displayName || `Frame ${slot.position}`}</option>)}</select>
+            {assignedName ? <p className="mb-4 text-sm text-[#6f685f]">This frame is labeled <strong>{assignedName}</strong>.</p> : <><label className="field-label" htmlFor="invite-name">Your name</label><input id="invite-name" data-testid="input-participant-name" className="input-paper mb-4" maxLength={30} placeholder="What should we call you?" value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></>}
             <div className="flex items-center gap-2 text-xs text-[#6f685f]"><LockGlyph /> Your frame is hidden from the group until all are confirmed.</div>
             {claim.isError && <div className="mt-4"><ErrorNote message={getError(claim.error)} /></div>}
-            <Button className="mt-5 w-full" disabled={!displayName.trim() || claim.isPending} onClick={submit}>{claim.isPending ? <LoaderCircle className="animate-spin" /> : null} Claim this frame <ArrowRight size={17} /></Button>
+            <Button className="mt-5 w-full" disabled={!claimDisplayName.trim() || claim.isPending} onClick={submit}>{claim.isPending ? <LoaderCircle className="animate-spin" /> : null} Claim this frame <ArrowRight size={17} /></Button>
           </>}
         </>}
       </Panel>
