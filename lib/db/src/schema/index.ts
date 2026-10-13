@@ -1,5 +1,6 @@
 export * from "./booths";
 export * from "./pushSubscriptions";
+export * from "./users";
 
 // Export your models here. Add one export per file
 // export * from "./posts";

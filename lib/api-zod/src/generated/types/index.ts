@@ -7,6 +7,7 @@
  */
 
 export * from './accessTokenParameter';
+export * from './authUser';
 export * from './boothCreated';
 export * from './boothInput';
 export * from './boothInputCountdownSeconds';
@@ -20,6 +21,7 @@ export * from './boothStateLayout';
 export * from './boothStateMode';
 export * from './boothStateRevealMode';
 export * from './boothStateStatus';
+export * from './boothSummary';
 export * from './canvasObject';
 export * from './canvasObjectKind';
 export * from './creatorTokenParameter';
@@ -37,9 +39,12 @@ export * from './frameUploadDestination';
 export * from './frameUploadInput';
 export * from './frameUploadInputContentType';
 export * from './healthStatus';
+export * from './loginInput';
+export * from './logoutResult';
 export * from './participantTokenParameter';
 export * from './pushSubscriptionInput';
 export * from './pushSubscriptionInputKeys';
 export * from './pushSubscriptionResult';
+export * from './registerInput';
 export * from './slotClaim';
 export * from './slotClaimInput';

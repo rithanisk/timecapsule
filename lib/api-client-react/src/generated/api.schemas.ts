@@ -416,6 +416,44 @@ export interface PushSubscriptionResult {
   message: string;
 }
 
+export interface RegisterInput {
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  displayName: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
+}
+
+export interface LogoutResult {
+  ok: boolean;
+}
+
+export interface BoothSummary {
+  id: string;
+  name: string;
+  status: string;
+  participantCount: number;
+  createdAt: string;
+}
+
 export type ParticipantTokenParameter = string;
 
 export type CreatorTokenParameter = string;

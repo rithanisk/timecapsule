@@ -661,3 +661,74 @@ export const SubscribeToBoothReadyResponse = zod.object({
 })
 
 
+/**
+ * @summary Create a new user account
+ */
+export const registerBodyEmailMax = 254;
+
+export const registerBodyPasswordMin = 8;
+export const registerBodyPasswordMax = 128;
+
+export const registerBodyDisplayNameMax = 50;
+
+
+
+export const RegisterBody = zod.object({
+  "email": zod.string().email().max(registerBodyEmailMax),
+  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
+  "displayName": zod.string().min(1).max(registerBodyDisplayNameMax)
+})
+
+export const RegisterResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string()
+})
+
+
+/**
+ * @summary Log in with email and password
+ */
+export const LoginBody = zod.object({
+  "email": zod.string().email(),
+  "password": zod.string()
+})
+
+export const LoginResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string()
+})
+
+
+/**
+ * @summary Log out the current session
+ */
+export const LogoutResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Get the currently authenticated user
+ */
+export const GetMeResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string()
+})
+
+
+/**
+ * @summary List booths owned by the authenticated user
+ */
+export const GetMyBoothsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "participantCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
+export const GetMyBoothsResponse = zod.array(GetMyBoothsResponseItem)
+
+

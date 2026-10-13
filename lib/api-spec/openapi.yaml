@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: booths
     description: Private asynchronous photobooths
+  - name: auth
+    description: User authentication
 paths:
   /healthz:
     get:
@@ -174,6 +176,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PushSubscriptionResult"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out the current session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResult"
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the currently authenticated user
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+  /auth/booths:
+    get:
+      operationId: getMyBooths
+      tags: [auth]
+      summary: List booths owned by the authenticated user
+      responses:
+        "200":
+          description: User's booths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BoothSummary"
 components:
   parameters:
     PrivateToken:
@@ -369,4 +445,38 @@ components:
       properties:
         enabled: { type: boolean }
         message: { type: string }
+    RegisterInput:
+      type: object
+      required: [email, password, displayName]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        displayName: { type: string, minLength: 1, maxLength: 50 }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    AuthUser:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+    LogoutResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+    BoothSummary:
+      type: object
+      required: [id, name, status, participantCount, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string }
+        participantCount: { type: integer }
+        createdAt: { type: string, format: date-time }
 

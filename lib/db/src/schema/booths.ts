@@ -31,6 +31,7 @@ export const boothsTable = pgTable(
       withTimezone: true,
     }),
     status: text("status").notNull().default("collecting"),
+    userId: uuid("user_id"),
     customization: jsonb("customization")
       .$type<Record<string, unknown>>()
       .notNull()

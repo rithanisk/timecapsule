@@ -1,15 +1,16 @@
 import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useParams } from 'wouter';
+import { Link, useLocation, useParams } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type BoothInput, type BoothState, type CanvasObject, type CustomizationInput,
   type FrameConfirmInput, type FrameUploadInput, type PushSubscriptionInput, type SlotClaimInput,
 } from '@workspace/api-client-react';
 import {
-  getGetBoothQueryKey, useClaimBoothSlot, useConfirmBoothFrame, useCreateBooth,
-  useDeleteBooth, useGetBooth, useRequestFrameUpload, useSaveBoothCustomization,
+  getGetBoothQueryKey, getGetMyBoothsQueryKey, useClaimBoothSlot, useConfirmBoothFrame, useCreateBooth,
+  useDeleteBooth, useGetBooth, useGetMyBooths, useRequestFrameUpload, useSaveBoothCustomization,
   useSubscribeToBoothReady,
 } from '@workspace/api-client-react';
+import { useAuth } from '@/hooks/use-auth';
 import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, TopBar, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
 
@@ -87,39 +88,66 @@ function getError(error: unknown) {
 
 export function HomePage() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
   const query = useBooth(activeToken);
   const booth = query.data;
-  const nodes = booth?.slots ?? Array.from({ length: 6 }, (_, i) => ({ id: `sample-${i}`, displayName: `Frame ${i + 1}`, claimStatus: 'open', photoUrl: null }));
   const submitted = booth?.completedCount ?? 0;
+  const myBoothsQuery = useGetMyBooths({ query: { queryKey: getGetMyBoothsQueryKey(), enabled: Boolean(user) } });
+  const myBooths = myBoothsQuery.data ?? [];
+  const heroTitle = user ? `Hi, ${user.displayName}!` : booth ? booth.name : 'Welcome to your';
+  const heroSubtitle = booth
+    ? (booth.revealAvailable ? 'Everyone is here.' : `${submitted} of ${booth.participantCount} moments added`)
+    : user
+      ? 'Your timecapsules are waiting.'
+      : 'A private photobooth for the people you love. Take photos apart, reveal them together.';
   return <Shell>
-    <TopBar right={<span className="eyebrow hidden sm:inline">Different places · one photobooth</span>} />
+    <TopBar />
     <section className="mx-auto max-w-[850px] pb-8 pt-7 text-center sm:pt-10">
-      <p className="eyebrow mb-2 text-[#e5786a]">{booth ? booth.name : 'A little togetherness, on your own time'}</p>
-      <div className="memory-map" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'A preview of a Timecapsule booth'}>
-        <svg className="memory-map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {nodes.map((node, index) => {
-            const ringCount = nodes.length > 8 && index >= 8 ? nodes.length - 8 : Math.min(nodes.length, 8);
-            const ringIndex = nodes.length > 8 && index >= 8 ? index - 8 : index;
-            const radius = nodes.length > 8 && index < 8 ? 29 : 43;
-            const angle = -Math.PI / 2 + (2 * Math.PI * ringIndex) / ringCount;
-            return <line key={node.id} x1="50" y1="50" x2={50 + Math.cos(angle) * radius} y2={50 + Math.sin(angle) * radius} />;
-          })}
-        </svg>
-        <div className="memory-map-center"><span className="eyebrow">Your moments, together</span><h1 className="serif">timecapsule</h1><p>{booth ? `${submitted} of ${booth.participantCount} moments added` : 'Each photo finds its place here.'}</p></div>
-        {nodes.map((node, index) => {
-          const ringCount = nodes.length > 8 && index >= 8 ? nodes.length - 8 : Math.min(nodes.length, 8);
-          const ringIndex = nodes.length > 8 && index >= 8 ? index - 8 : index;
-          const radius = nodes.length > 8 && index < 8 ? 29 : 43;
-          const angle = -Math.PI / 2 + (2 * Math.PI * ringIndex) / ringCount;
-          const isReady = node.claimStatus === 'submitted';
-          return <div key={node.id} className={`memory-map-node tone-${index % 4} ${isReady ? 'is-ready' : ''} ${nodes.length > 12 ? 'is-small' : ''}`} style={{ left: `${50 + Math.cos(angle) * radius}%`, top: `${50 + Math.sin(angle) * radius}%`, backgroundImage: booth?.revealAvailable && node.photoUrl ? `url("${node.photoUrl}")` : undefined }} title={`${node.displayName}: ${isReady ? 'photo added' : 'waiting'}`}>
-            {!booth?.revealAvailable || !node.photoUrl ? <span>{isReady ? <Check size={19} /> : index + 1}</span> : null}
-          </div>;
-        })}
+      {/* Decorative hero area */}
+      <div className="home-hero" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
+        {/* Floating SVG icons */}
+        <img src={stickerCherry} alt="" className="home-deco" style={{ top: '6%', left: '8%', width: 36, transform: 'rotate(-15deg)' }} />
+        <img src={stickerFlower} alt="" className="home-deco" style={{ top: '12%', right: '10%', width: 32, transform: 'rotate(12deg)' }} />
+        <img src={stickerBird} alt="" className="home-deco" style={{ bottom: '18%', left: '5%', width: 34, transform: 'rotate(-8deg)' }} />
+        <img src={stickerStrawberry} alt="" className="home-deco" style={{ top: '38%', right: '4%', width: 30, transform: 'rotate(20deg)' }} />
+        <img src={stickerLeaf} alt="" className="home-deco" style={{ bottom: '10%', right: '12%', width: 28, transform: 'rotate(-25deg)' }} />
+        <img src={stickerConfetti} alt="" className="home-deco" style={{ top: '4%', left: '45%', width: 26, transform: 'rotate(8deg)' }} />
+        <img src={stickerCupcake} alt="" className="home-deco" style={{ bottom: '6%', left: '35%', width: 30, transform: 'rotate(5deg)' }} />
+        <img src={stickerFlamingo} alt="" className="home-deco" style={{ top: '55%', left: '2%', width: 32, transform: 'rotate(10deg)' }} />
+
+        {/* Sample photostrip on left */}
+        <div className="home-sample-strip home-sample-left">
+          <FramePreview photos={[]} layout="vertical" mode="classic" compact frameType="clean" />
+        </div>
+        {/* Sample photostrip on right */}
+        <div className="home-sample-strip home-sample-right">
+          <FramePreview photos={[]} layout="classic-strip" mode="classic" compact frameType="polaroid" />
+        </div>
+
+        {/* Center welcome text */}
+        <div className="home-hero-center">
+          <h1 className="serif">{heroTitle}</h1>
+          <h1 className="serif home-hero-title">{(!user && !booth) ? 'timecapsule!' : ''}</h1>
+          <p className="home-hero-subtitle">{heroSubtitle}</p>
+        </div>
       </div>
-      <p className="mx-auto max-w-md text-sm leading-6 text-[#6f685f]">{booth?.revealAvailable ? 'Everyone is here. Open your finished keepsake.' : 'Moments gather here as each person adds a photo. The photos stay private until everyone is ready.'}</p>
-      <div className="mt-5 flex flex-wrap justify-center gap-3">{booth ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></> : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}</div>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-3">{booth ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></> : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}</div>
+
+      {user && myBooths.length > 0 && <div className="mt-10 text-left">
+        <h2 className="serif mb-4 text-lg">Your booths</h2>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {myBooths.map((b) => <li key={b.id} className="flex items-center justify-between rounded-2xl border border-[#e3dcd1] bg-[#fffdf8] p-4">
+            <div><strong className="block text-sm">{b.name}</strong><small className="text-xs text-[#756f66]">{b.participantCount} participants</small></div>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${b.status === 'collecting' ? 'bg-[#f2e5c8] text-[#7a6530]' : b.status === 'complete' ? 'bg-[#d7e5df] text-[#3a6b52]' : 'bg-[#e8e0d5] text-[#756f66]'}`}>{b.status}</span>
+          </li>)}
+        </ul>
+      </div>}
+
+      {!user && !booth && <p className="mt-6 text-sm text-[#756f66]">
+        <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
+      </p>}
     </section>
   </Shell>;
 }
@@ -502,7 +530,7 @@ export function RevealPage() {
     ctx.font = booth.customization.captionFont === 'handwritten' ? '64px Caveat' : booth.customization.captionFont === 'sans' ? '48px Inter' : 'italic 56px Georgia';
     ctx.fillText(booth.customization.caption || booth.name, 500, topCaption ? 105 : canvas.height - 70, 890);
     if (booth.customization.showDate) { ctx.font = '22px sans-serif'; ctx.fillText(new Date().toLocaleDateString(),500,canvas.height - 38); }
-    ctx.font = '18px sans-serif'; ctx.fillText('DIFFERENT PLACES · ONE PHOTOBOOTH',500,canvas.height - 10);
+    ctx.font = '18px sans-serif'; ctx.fillText('timecapsule',500,canvas.height - 10);
     for (const object of booth.customization.objects) {
       ctx.save(); ctx.translate(object.x*1000, object.y*canvas.height); ctx.rotate(object.rotation*Math.PI/180);
       const stickerSource = object.kind === 'sticker' ? stickerImageMap[object.label] : undefined;
