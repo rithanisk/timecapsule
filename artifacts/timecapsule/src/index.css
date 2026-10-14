@@ -460,35 +460,51 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .home-hero-title { font-size: clamp(2.2rem, 6vw, 4.2rem) !important; color: var(--coral) !important; }
 .home-hero-subtitle { margin: 12px auto 0; max-width: 340px; color: #756f66; font-size: clamp(13px, 1.6vw, 16px); line-height: 1.5; }
 
-/* Collage home — frames scattered around center text like a mood board */
-.home-collage { position: relative; width: 100%; min-height: 640px; margin: 0 auto; overflow: hidden; }
-.collage-frame { position: absolute; z-index: 2; pointer-events: none; opacity: .75; transition: opacity .3s ease; }
-.home-collage:hover .collage-frame { opacity: .9; }
+/* Collage home — CSS Grid layout, zero overlap guaranteed */
+.home-collage {
+  display: grid;
+  width: 100%;
+  min-height: 560px;
+  margin: 0 auto;
+  padding: 14px;
+  grid-template-columns:
+    clamp(70px, 12vw, 130px)
+    clamp(70px, 11vw, 120px)
+    1fr
+    clamp(70px, 11vw, 120px)
+    clamp(70px, 12vw, 130px);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "tl    tc    deco1  deco2  tr"
+    "ml    .     center .      mr"
+    "bl    bml   deco3  bmr    br";
+  gap: 10px;
+  align-items: center;
+}
+.collage-frame { pointer-events: none; opacity: .72; transition: opacity .3s ease; }
+.home-collage:hover .collage-frame { opacity: .88; }
 .collage-frame .photostrip { box-shadow: 0 3px 16px rgba(41,39,35,.12); }
-/* Row 1 — top edge, well separated */
-.collage-tl { top: 0; left: 2%; width: clamp(80px, 12vw, 120px); }
-.collage-tr { top: 0; right: 2%; width: clamp(80px, 12vw, 120px); }
-/* Row 2 — mid, pushed to far edges with gap for center text */
-.collage-ml { top: 35%; left: 0; width: clamp(90px, 13vw, 140px); }
-.collage-mr { top: 30%; right: 0; width: clamp(90px, 13vw, 140px); }
-/* Row 3 — bottom corners */
-.collage-bl { bottom: 0; left: 1%; width: clamp(85px, 12vw, 125px); }
-.collage-br { bottom: 0; right: 1%; width: clamp(80px, 11vw, 110px); }
-/* Top center — between tl and tr */
-.collage-tc { top: 0; left: 50%; transform: translateX(-50%) rotate(2deg); width: clamp(80px, 11vw, 110px); }
-/* Bottom mid-left / mid-right — fill bottom row gaps */
-.collage-bml { bottom: 0; left: 22%; width: clamp(80px, 11vw, 110px); }
-.collage-bmr { bottom: 0; right: 22%; width: clamp(80px, 11vw, 110px); }
-/* Bottom center — below the text */
-.collage-bc { bottom: 0; left: 50%; transform: translateX(-50%) rotate(2deg); width: clamp(85px, 12vw, 115px); }
-/* Mobile-only frames — flanking center text */
-.collage-mob-l { top: 40%; left: 2%; width: clamp(70px, 20vw, 95px); }
-.collage-mob-r { top: 35%; right: 2%; width: clamp(70px, 20vw, 95px); }
-/* Sticker decorations */
-.collage-sticker { position: absolute; pointer-events: none; opacity: .35; z-index: 3; transition: opacity .3s ease; }
-.home-collage:hover .collage-sticker { opacity: .55; }
-/* Center text — vertically centered with generous padding to clear frames */
-.collage-center { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 640px; padding: 40px 80px; }
+/* Grid area assignments — each frame locked to its own cell */
+.collage-tl  { grid-area: tl;    align-self: start; }
+.collage-tc  { grid-area: tc;    align-self: start; }
+.collage-tr  { grid-area: tr;    align-self: start;  justify-self: end; }
+.collage-ml  { grid-area: ml;    align-self: center; }
+.collage-mr  { grid-area: mr;    align-self: center; justify-self: end; }
+.collage-bl  { grid-area: bl;    align-self: end; }
+.collage-bml { grid-area: bml;   align-self: end; }
+.collage-bmr { grid-area: bmr;   align-self: end;    justify-self: end; }
+.collage-br  { grid-area: br;    align-self: end;    justify-self: end; }
+/* Sticker slots — sit in the empty grid cells, never overlap frames or text */
+.collage-deco { display: grid; place-items: center; pointer-events: none; opacity: .35; transition: opacity .3s ease; }
+.home-collage:hover .collage-deco { opacity: .55; }
+.collage-deco-1 { grid-area: deco1; align-self: start; }
+.collage-deco-2 { grid-area: deco2; align-self: start; justify-self: end; }
+.collage-deco-3 { grid-area: deco3; align-self: end; }
+/* Mobile-only frames */
+.collage-mob-l { grid-area: mobl; align-self: center; }
+.collage-mob-r { grid-area: mobr; align-self: center; justify-self: end; }
+/* Center text — lives in its own grid cell */
+.collage-center { grid-area: center; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 12px; }
 .collage-center h1 { margin: 0; font-size: clamp(1.6rem, 4.5vw, 2.8rem); line-height: 1.15; letter-spacing: -.03em; color: var(--ink); }
 .collage-title { font-size: clamp(2.2rem, 6vw, 4.2rem) !important; color: var(--coral) !important; }
 .collage-subtitle { margin: 12px auto 0; max-width: 360px; color: #756f66; font-size: clamp(13px, 1.6vw, 16px); line-height: 1.5; }
@@ -499,14 +515,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .home-sample-left { top: 8%; left: 2%; }
   .home-sample-right { top: 10%; right: 2%; }
   .home-deco { width: 22px !important; }
-  .home-collage { min-height: 500px; }
-  .collage-frame { opacity: .5; }
-  .collage-tl, .collage-tr { width: clamp(60px, 18vw, 85px); }
-  .collage-ml, .collage-mr { width: clamp(65px, 20vw, 90px); }
-  .collage-bl, .collage-br { width: clamp(60px, 18vw, 80px); }
-  .collage-bc { width: clamp(60px, 16vw, 80px); }
-  .collage-sticker { width: 18px !important; }
-  .collage-center { min-height: 500px; padding: 30px 20px; }
+  .home-collage {
+    min-height: 400px;
+    padding: 10px;
+    gap: 8px;
+    grid-template-columns: clamp(55px, 18vw, 85px) 1fr clamp(55px, 18vw, 85px);
+    grid-template-rows: 1fr;
+    grid-template-areas: "mobl center mobr";
+  }
+  .collage-frame { opacity: .55; }
+  .collage-center { padding: 16px 8px; }
   .mobile-nav { position: fixed; z-index: 50; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; min-height: 74px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid #e1d8cc; background: rgba(255,253,248,.97); box-shadow: 0 -5px 20px rgba(41,39,35,.08); backdrop-filter: blur(14px); }
   .mobile-nav-item { display: flex; min-width: 0; min-height: 52px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 12px; background: transparent; color: #756f66; font-size: 10px; font-weight: 600; }
   .mobile-nav-item[aria-current="page"] { color: #292723; }

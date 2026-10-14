@@ -143,25 +143,16 @@ export function HomePage() {
           <FramePreview photos={[]} layout="editorial" mode="classic" compact frameType="clean" />
         </div>
 
-        {/* Mobile stickers — just a few */}
-        <img src={stickerCherry} alt="" className="collage-sticker sm:hidden" style={{ top: '8%', left: '10%', width: 22, transform: 'rotate(-15deg)' }} />
-        <img src={stickerFlower} alt="" className="collage-sticker sm:hidden" style={{ top: '12%', right: '12%', width: 20, transform: 'rotate(12deg)' }} />
-        <img src={stickerConfetti} alt="" className="collage-sticker sm:hidden" style={{ bottom: '10%', left: '50%', width: 20, transform: 'rotate(8deg)' }} />
-
-        {/* Desktop stickers — scattered everywhere to fill gaps */}
-        <img src={stickerCherry} alt="" className="collage-sticker hidden sm:block" style={{ top: '3%', left: '20%', width: 32, transform: 'rotate(-15deg)' }} />
-        <img src={stickerFlower} alt="" className="collage-sticker hidden sm:block" style={{ top: '6%', right: '20%', width: 30, transform: 'rotate(12deg)' }} />
-        <img src={stickerBird} alt="" className="collage-sticker hidden sm:block" style={{ top: '48%', left: '16%', width: 32, transform: 'rotate(-8deg)' }} />
-        <img src={stickerStrawberry} alt="" className="collage-sticker hidden sm:block" style={{ top: '42%', right: '15%', width: 28, transform: 'rotate(20deg)' }} />
-        <img src={stickerLeaf} alt="" className="collage-sticker hidden sm:block" style={{ bottom: '12%', right: '20%', width: 26, transform: 'rotate(-25deg)' }} />
-        <img src={stickerConfetti} alt="" className="collage-sticker hidden sm:block" style={{ top: '1%', left: '46%', width: 26, transform: 'rotate(8deg)' }} />
-        <img src={stickerCupcake} alt="" className="collage-sticker hidden sm:block" style={{ bottom: '6%', left: '42%', width: 28, transform: 'rotate(5deg)' }} />
-        <img src={stickerFlamingo} alt="" className="collage-sticker hidden sm:block" style={{ top: '65%', left: '2%', width: 30, transform: 'rotate(10deg)' }} />
-        <img src={stickerPineapple} alt="" className="collage-sticker hidden sm:block" style={{ top: '18%', left: '3%', width: 26, transform: 'rotate(-20deg)' }} />
-        <img src={stickerBanana} alt="" className="collage-sticker hidden sm:block" style={{ bottom: '18%', right: '3%', width: 28, transform: 'rotate(15deg)' }} />
-        <img src={stickerChampagne} alt="" className="collage-sticker hidden sm:block" style={{ top: '28%', left: '5%', width: 24, transform: 'rotate(6deg)' }} />
-        <img src={stickerPancake} alt="" className="collage-sticker hidden sm:block" style={{ bottom: '3%', right: '38%', width: 26, transform: 'rotate(-10deg)' }} />
-        <img src={stickerWatermelon} alt="" className="collage-sticker hidden sm:block" style={{ top: '72%', right: '14%', width: 28, transform: 'rotate(18deg)' }} />
+        {/* Stickers — placed in empty grid cells so they never overlap frames or text */}
+        <div className="collage-deco collage-deco-1 hidden sm:grid">
+          <img src={stickerCherry} alt="" style={{ width: 28, transform: 'rotate(-15deg)' }} />
+        </div>
+        <div className="collage-deco collage-deco-2 hidden sm:grid">
+          <img src={stickerFlower} alt="" style={{ width: 26, transform: 'rotate(12deg)' }} />
+        </div>
+        <div className="collage-deco collage-deco-3 hidden sm:grid">
+          <img src={stickerConfetti} alt="" style={{ width: 26, transform: 'rotate(8deg)' }} />
+        </div>
 
         {/* Center text overlay */}
         <div className="collage-center">
