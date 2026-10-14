@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, TopBar, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
+import { sampleStripPhotos } from '@/home-samples';
 
 // SVG asset stickers
 import stickerCherry from '@assets/cherry-svgrepo-com.svg';
@@ -112,7 +113,7 @@ export function HomePage() {
     { layout: 'vertical', frameType: 'clean' },
     { layout: 'vertical', frameType: 'black' },
     { layout: 'horizontal', frameType: 'solid' },
-    ...(booth && booth.slots.length > 20 ? [
+    ...(booth?.revealAvailable && booth.slots.length > 20 ? [
       { layout: 'horizontal', frameType: 'retro' },
       { layout: 'horizontal', frameType: 'clean' },
     ] : []),
@@ -120,7 +121,7 @@ export function HomePage() {
   return <Shell>
     <TopBar />
     <section className="mx-auto max-w-[1100px] pb-8 pt-5 sm:pt-8">
-      <div className={`home-collage ${booth && booth.slots.length > 12 ? 'has-extra-strips' : ''} ${booth && booth.slots.length > 20 ? 'has-desktop-extra' : ''}`} aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
+      <div className={`home-collage ${booth && booth.slots.length > 12 ? 'has-extra-strips' : ''} ${booth?.revealAvailable && booth.slots.length > 20 ? 'has-desktop-extra' : ''}`} aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
         <div className="collage-center">
           <img className="collage-sticker collage-sticker-cherry" src={stickerCherry} alt="" />
           <img className="collage-sticker collage-sticker-flower" src={stickerFlower} alt="" />
@@ -140,8 +141,11 @@ export function HomePage() {
         </div>
         {homeStrips.map(({ layout, frameType }, index) => {
           const stripSlots = booth?.slots.slice(index * 2, index * 2 + 2) ?? [];
-          const photos = Array.from({ length: 2 }, (_, slotIndex) => booth?.revealAvailable ? stripSlots[slotIndex]?.photoUrl ?? '' : '');
-          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`}>
+          const hasRevealedPhotos = Boolean(booth?.revealAvailable && stripSlots.some((slot) => slot.photoUrl));
+          const photos = hasRevealedPhotos
+            ? Array.from({ length: 2 }, (_, slotIndex) => stripSlots[slotIndex]?.photoUrl ?? '')
+            : sampleStripPhotos[index] ?? ['', ''];
+          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!hasRevealedPhotos}>
             <FramePreview photos={photos} layout={layout} mode="classic" compact frameType={frameType} />
           </div>;
         })}
