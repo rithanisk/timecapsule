@@ -91,83 +91,60 @@ export function HomePage() {
   const { user } = useAuth();
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
   const query = useBooth(activeToken);
-  const booth = query.data;
+  const booth = query.data && Array.isArray(query.data.slots) ? query.data : undefined;
   const submitted = booth?.completedCount ?? 0;
   const myBoothsQuery = useGetMyBooths({ query: { queryKey: getGetMyBoothsQueryKey(), enabled: Boolean(user) } });
-  const myBooths = myBoothsQuery.data ?? [];
+  const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
   const heroTitle = user ? `Hi, ${user.displayName}!` : booth ? booth.name : 'Welcome to your';
   const heroSubtitle = booth
     ? (booth.revealAvailable ? 'Everyone is here.' : `${submitted} of ${booth.participantCount} moments added`)
     : user
       ? 'Your timecapsules are waiting.'
       : 'A private photobooth for the people you love. Take photos apart, reveal them together.';
+  const homeStrips = [
+    { layout: 'horizontal', frameType: 'clean' },
+    { layout: 'horizontal', frameType: 'retro' },
+    { layout: 'vertical', frameType: 'film' },
+    { layout: 'vertical', frameType: 'polaroid' },
+    { layout: 'horizontal', frameType: 'torn' },
+    { layout: 'horizontal', frameType: 'pattern' },
+    { layout: 'horizontal', frameType: 'whimsical' },
+    { layout: 'vertical', frameType: 'clean' },
+    { layout: 'vertical', frameType: 'black' },
+    { layout: 'horizontal', frameType: 'solid' },
+    ...(booth && booth.slots.length > 20 ? [
+      { layout: 'horizontal', frameType: 'retro' },
+      { layout: 'horizontal', frameType: 'clean' },
+    ] : []),
+  ];
   return <Shell>
     <TopBar />
-    <section className="mx-auto max-w-[1000px] pb-8 pt-7 sm:pt-10">
-      {/* Collage hero — frames scattered around center text */}
-      <div className="home-collage" aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
-        {/* Mobile-only frames — just 2 small ones flanking the text */}
-        <div className="collage-frame collage-mob-l sm:hidden" style={{ transform: 'rotate(-6deg)' }}>
-          <FramePreview photos={[]} layout="vertical" mode="classic" compact frameType="clean" />
-        </div>
-        <div className="collage-frame collage-mob-r sm:hidden" style={{ transform: 'rotate(4deg)' }}>
-          <FramePreview photos={[]} layout="classic-strip" mode="classic" compact frameType="polaroid" />
-        </div>
-
-        {/* Desktop frames — fill the space around the text */}
-        <div className="collage-frame collage-tl hidden sm:block" style={{ transform: 'rotate(-6deg)' }}>
-          <FramePreview photos={[]} layout="vertical" mode="classic" compact frameType="clean" />
-        </div>
-        <div className="collage-frame collage-tc hidden sm:block" style={{ transform: 'rotate(2deg)' }}>
-          <FramePreview photos={[]} layout="horizontal" mode="classic" compact frameType="retro" />
-        </div>
-        <div className="collage-frame collage-tr hidden sm:block" style={{ transform: 'rotate(4deg)' }}>
-          <FramePreview photos={[]} layout="classic-strip" mode="classic" compact frameType="polaroid" />
-        </div>
-        <div className="collage-frame collage-ml hidden sm:block" style={{ transform: 'rotate(3deg)' }}>
-          <FramePreview photos={[]} layout="double" mode="classic" compact frameType="clean" />
-        </div>
-        <div className="collage-frame collage-mr hidden sm:block" style={{ transform: 'rotate(-5deg)' }}>
-          <FramePreview photos={[]} layout="grid" mode="classic" compact frameType="retro" />
-        </div>
-        <div className="collage-frame collage-bl hidden sm:block" style={{ transform: 'rotate(5deg)' }}>
-          <FramePreview photos={[]} layout="horizontal" mode="classic" compact frameType="film" />
-        </div>
-        <div className="collage-frame collage-bml hidden sm:block" style={{ transform: 'rotate(-2deg)' }}>
-          <FramePreview photos={[]} layout="mixed-sizes" mode="scrapbook" compact frameType="torn" />
-        </div>
-        <div className="collage-frame collage-bmr hidden sm:block" style={{ transform: 'rotate(3deg)' }}>
-          <FramePreview photos={[]} layout="polaroid-stack" mode="classic" compact frameType="polaroid" />
-        </div>
-        <div className="collage-frame collage-br hidden sm:block" style={{ transform: 'rotate(-3deg)' }}>
-          <FramePreview photos={[]} layout="editorial" mode="classic" compact frameType="clean" />
-        </div>
-
-        {/* Stickers — placed in empty grid cells so they never overlap frames or text */}
-        <div className="collage-deco collage-deco-1 hidden sm:grid">
-          <img src={stickerCherry} alt="" style={{ width: 28, transform: 'rotate(-15deg)' }} />
-        </div>
-        <div className="collage-deco collage-deco-2 hidden sm:grid">
-          <img src={stickerFlower} alt="" style={{ width: 26, transform: 'rotate(12deg)' }} />
-        </div>
-        <div className="collage-deco collage-deco-3 hidden sm:grid">
-          <img src={stickerConfetti} alt="" style={{ width: 26, transform: 'rotate(8deg)' }} />
-        </div>
-
-        {/* Center text overlay */}
+    <section className="mx-auto max-w-[1100px] pb-8 pt-5 sm:pt-8">
+      <div className={`home-collage ${booth && booth.slots.length > 12 ? 'has-extra-strips' : ''} ${booth && booth.slots.length > 20 ? 'has-desktop-extra' : ''}`} aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
         <div className="collage-center">
-          <h1 className="serif">{heroTitle}</h1>
-          <h1 className="serif collage-title">{(!user && !booth) ? 'timecapsule!' : ''}</h1>
+          <img className="collage-sticker collage-sticker-cherry" src={stickerCherry} alt="" />
+          <img className="collage-sticker collage-sticker-flower" src={stickerFlower} alt="" />
+          <img className="collage-sticker collage-sticker-bird" src={stickerBird} alt="" />
+          <img className="collage-sticker collage-sticker-confetti" src={stickerConfetti} alt="" />
+          <h1 className="serif collage-heading">{heroTitle}</h1>
+          {!user && !booth && <p className="serif collage-title">timecapsule!</p>}
           <p className="collage-subtitle">{heroSubtitle}</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <div className="collage-actions">
             {booth
               ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
               : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}
           </div>
-          {!user && !booth && <p className="mt-4 text-sm text-[#756f66]">
+          {!user && !booth && <p className="collage-signin">
             <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
           </p>}
         </div>
+        {homeStrips.map(({ layout, frameType }, index) => {
+          const stripSlots = booth?.slots.slice(index * 2, index * 2 + 2) ?? [];
+          const photos = Array.from({ length: 2 }, (_, slotIndex) => booth?.revealAvailable ? stripSlots[slotIndex]?.photoUrl ?? '' : '');
+          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`}>
+            <FramePreview photos={photos} layout={layout} mode="classic" compact frameType={frameType} />
+          </div>;
+        })}
       </div>
 
       {user && myBooths.length > 0 && <div className="mx-auto mt-10 max-w-[700px] text-left">

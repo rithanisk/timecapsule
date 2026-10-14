@@ -1,12 +1,12 @@
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Image, Link2, LoaderCircle, LockKeyhole, LogOut, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Hourglass, Image, Link2, LoaderCircle, LogOut, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 export function Brand({ light = false }: { light?: boolean }) {
   return <Link href="/" className={`brand ${light ? 'text-[#fffdf8]' : 'text-[#292723]'} inline-flex items-center gap-2 no-underline`} data-testid="link-home">
-    <span className="grid size-9 place-items-center rounded-full bg-[#292723] text-[#fffdf8]"><Image size={17} /></span>
+    <span className="grid size-9 place-items-center rounded-[12px] border border-[#d67a6d] bg-[#fffdf8] text-[#c76559]"><Hourglass size={19} strokeWidth={1.8} /></span>
     <span className="font-semibold tracking-[-.04em]">timecapsule</span>
   </Link>;
 }
@@ -43,8 +43,7 @@ export function TopBar({ right, dark = false }: { right?: ReactNode; dark?: bool
         <button type="button" onClick={() => void logout()} className="ml-1 inline-flex items-center gap-1 underline hover:opacity-70"><LogOut size={13} /> Sign out</button>
       </span>
     : <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}>
-        <LockKeyhole size={14} /> Private by default
-        <Link href="/login" className="ml-2 font-medium text-[#292723] underline">Sign in</Link>
+        <Link href="/login" className={`font-medium underline ${dark ? 'text-[#fffdf8]' : 'text-[#292723]'}`}>Sign in</Link>
       </span>;
   return <header className="flex min-h-[76px] items-center justify-between border-b border-[#d9d1c5] dark:border-[#514d46]">
     <Brand light={dark} />{right ?? defaultRight}

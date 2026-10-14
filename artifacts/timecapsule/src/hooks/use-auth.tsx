@@ -80,7 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [logoutMutation, queryClient],
   );
 
-  const user = meQuery.data ?? null;
+  const user = meQuery.data && typeof meQuery.data.id === 'string' && typeof meQuery.data.displayName === 'string'
+    ? meQuery.data
+    : null;
   const isLoading = meQuery.isLoading;
 
   return (
