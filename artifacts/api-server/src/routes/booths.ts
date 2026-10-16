@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { Router, type IRouter, type Request } from "express";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import sharp from "sharp";
@@ -32,6 +32,7 @@ import {
 import {
   boothSlotsTable,
   boothsTable,
+  userBoothAccessTable,
   db,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -74,7 +75,7 @@ async function findBooth(privateToken: string) {
   return booth;
 }
 
-async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof findBooth>>>, privateToken: string) {
+export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof findBooth>>>, privateToken: string, photoUrlForSlot?: (slotId: string) => string) {
   const slots = await db
     .select()
     .from(boothSlotsTable)
@@ -108,7 +109,7 @@ async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof find
       claimStatus: slot.claimStatus,
       photoUrl:
         revealAvailable && slot.mediaPath
-          ? `/api/booths/${privateToken}/slots/${slot.id}/photo`
+          ? photoUrlForSlot?.(slot.id) ?? `/api/booths/${privateToken}/slots/${slot.id}/photo`
           : null,
     })),
     customization: booth.customization,
@@ -145,7 +146,6 @@ router.post("/booths", async (req, res): Promise<void> => {
 
   const privateToken = createToken();
   const creatorToken = createToken();
-  const now = new Date();
   const customization = {
     mode: input.mode,
     layout: input.layout,
@@ -174,7 +174,6 @@ router.post("/booths", async (req, res): Promise<void> => {
         scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
         status: "collecting",
         customization,
-        expiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
         ...(req.session?.userId ? { userId: req.session.userId } : {}),
       };
       // Only include photosPerPerson if > 1 to avoid errors on DBs without the column
@@ -218,10 +217,6 @@ router.get("/booths/:privateToken", async (req, res): Promise<void> => {
       res.status(404).json({ error: "This booth could not be found." });
       return;
     }
-    if (booth.expiresAt <= new Date()) {
-      res.status(410).json({ error: "This booth has expired." });
-      return;
-    }
     res.json(await buildBoothState(booth, params.data.privateToken));
   } catch (error) {
     req.log.error({ err: error }, "Failed to load booth");
@@ -237,7 +232,7 @@ router.post("/booths/:privateToken/slots/claim", async (req, res): Promise<void>
     return;
   }
   const booth = await findBooth(params.data.privateToken);
-  if (!booth || booth.expiresAt <= new Date()) {
+  if (!booth) {
     res.status(404).json({ error: "This booth is no longer available." });
     return;
   }
@@ -297,6 +292,9 @@ router.post("/booths/:privateToken/slots/claim", async (req, res): Promise<void>
           .set({ displayName: finalName, claimStatus: "claimed", claimTokenHash: hash, claimedAt: new Date() })
           .where(eq(boothSlotsTable.id, sid));
       }
+      if (req.session.userId) {
+        await tx.insert(userBoothAccessTable).values({ userId: req.session.userId, boothId: booth.id }).onConflictDoNothing();
+      }
       return { ...available, id: available.id, displayName: finalName };
     });
 
@@ -340,7 +338,7 @@ router.post(
     }
 
     const booth = await findBooth(params.data.privateToken);
-    if (!booth || booth.expiresAt <= new Date()) {
+    if (!booth) {
       res.status(404).json({ error: "This booth is no longer available." });
       return;
     }
@@ -391,7 +389,7 @@ router.post(
       return;
     }
     const booth = await findBooth(params.data.privateToken);
-    if (!booth || booth.expiresAt <= new Date()) {
+    if (!booth) {
       res.status(404).json({ error: "This booth is no longer available." });
       return;
     }
@@ -410,7 +408,7 @@ router.post(
       res.status(403).json({ error: "This participant link does not have access to that slot." });
       return;
     }
-    if (slot.claimStatus === "submitted" && slot.mediaPath === body.data.objectPath) {
+    if ((slot.claimStatus === "staged" || slot.claimStatus === "submitted") && slot.mediaPath === body.data.objectPath) {
       res.json(ConfirmBoothFrameResponse.parse(await buildBoothState(booth, params.data.privateToken)));
       return;
     }
@@ -484,12 +482,13 @@ router.post(
         await tx
           .update(boothSlotsTable)
           .set({
-            claimStatus: "submitted",
+            claimStatus: booth.photosPerPerson > 1 ? "staged" : "submitted",
             mediaPath: body.data.objectPath,
+            pendingObjectPath: null,
             width: normalized.info.width,
             height: normalized.info.height,
             captureSource: body.data.captureSource,
-            submittedAt: new Date(),
+            submittedAt: booth.photosPerPerson > 1 ? null : new Date(),
           })
           .where(eq(boothSlotsTable.id, currentSlot.id));
 
@@ -531,6 +530,162 @@ router.post(
   },
 );
 
+router.get("/booths/:privateToken/slots/:slotId/draft-photo", async (req, res): Promise<void> => {
+  const params = ConfirmBoothFrameParams.safeParse(req.params);
+  const headers = ConfirmBoothFrameHeader.safeParse({
+    "X-Participant-Token": getHeader(req, "X-Participant-Token"),
+  });
+  if (!params.success || !headers.success) {
+    res.status(400).json({ error: "Invalid saved photo link." });
+    return;
+  }
+  try {
+    const booth = await findBooth(params.data.privateToken);
+    if (!booth) {
+      res.status(404).json({ error: "This booth could not be found." });
+      return;
+    }
+    const [slot] = await db.select().from(boothSlotsTable).where(and(
+      eq(boothSlotsTable.boothId, booth.id),
+      eq(boothSlotsTable.id, params.data.slotId),
+    )).limit(1);
+    if (!slot || !tokenMatches(headers.data["X-Participant-Token"], slot.claimTokenHash)) {
+      res.status(403).json({ error: "This participant link cannot view that photo." });
+      return;
+    }
+    if ((slot.claimStatus !== "staged" && slot.claimStatus !== "submitted") || !slot.mediaPath) {
+      res.status(404).json({ error: "This saved photo is unavailable." });
+      return;
+    }
+    const file = await storage.getObjectEntityFile(slot.mediaPath);
+    const response = await storage.downloadObject(file, 0);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    if (response.body) {
+      const { Readable } = await import("node:stream");
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else res.end();
+  } catch (error) {
+    req.log.error({ err: error }, "Failed to serve saved photo");
+    res.status(404).json({ error: "This saved photo could not be loaded." });
+  }
+});
+
+router.delete("/booths/:privateToken/slots/:slotId/draft-photo", async (req, res): Promise<void> => {
+  const params = ConfirmBoothFrameParams.safeParse(req.params);
+  const headers = ConfirmBoothFrameHeader.safeParse({
+    "X-Participant-Token": getHeader(req, "X-Participant-Token"),
+  });
+  if (!params.success || !headers.success) {
+    res.status(400).json({ error: "Invalid saved photo request." });
+    return;
+  }
+  try {
+    const booth = await findBooth(params.data.privateToken);
+    if (!booth) {
+      res.status(404).json({ error: "This booth could not be found." });
+      return;
+    }
+    const result = await db.transaction(async (tx) => {
+      const [slot] = await tx.select().from(boothSlotsTable).where(and(
+        eq(boothSlotsTable.boothId, booth.id),
+        eq(boothSlotsTable.id, params.data.slotId),
+      )).for("update");
+      if (!slot || !tokenMatches(headers.data["X-Participant-Token"], slot.claimTokenHash)) return "forbidden" as const;
+      if (slot.claimStatus !== "staged" || !slot.mediaPath) return "unavailable" as const;
+      const file = await storage.getObjectEntityFile(slot.mediaPath);
+      await file.delete({ ignoreNotFound: true });
+      await tx.update(boothSlotsTable).set({
+        claimStatus: "claimed",
+        mediaPath: null,
+        pendingObjectPath: null,
+        width: null,
+        height: null,
+        captureSource: null,
+        submittedAt: null,
+      }).where(eq(boothSlotsTable.id, slot.id));
+      return "deleted" as const;
+    });
+    if (result === "forbidden") res.status(403).json({ error: "This participant link cannot delete that photo." });
+    else if (result === "unavailable") res.status(409).json({ error: "This photo has already been finalized or removed." });
+    else res.sendStatus(204);
+  } catch (error) {
+    req.log.error({ err: error }, "Failed to delete saved photo");
+    res.status(503).json({ error: "The photo could not be deleted. Please try again." });
+  }
+});
+
+router.post("/booths/:privateToken/slots/:slotId/finalize", async (req, res): Promise<void> => {
+  const params = ConfirmBoothFrameParams.safeParse(req.params);
+  const headers = ConfirmBoothFrameHeader.safeParse({
+    "X-Participant-Token": getHeader(req, "X-Participant-Token"),
+  });
+  if (!params.success || !headers.success) {
+    res.status(400).json({ error: "Invalid finalization request." });
+    return;
+  }
+  try {
+    const booth = await findBooth(params.data.privateToken);
+    if (!booth) {
+      res.status(404).json({ error: "This booth could not be found." });
+      return;
+    }
+    const result = await db.transaction(async (tx) => {
+      await tx.select({ id: boothsTable.id }).from(boothsTable).where(eq(boothsTable.id, booth.id)).for("update");
+      const [selected] = await tx.select().from(boothSlotsTable).where(and(
+        eq(boothSlotsTable.boothId, booth.id),
+        eq(boothSlotsTable.id, params.data.slotId),
+      )).limit(1);
+      if (!selected || !tokenMatches(headers.data["X-Participant-Token"], selected.claimTokenHash)) return "forbidden" as const;
+      const groupStart = Math.floor(selected.position / booth.photosPerPerson) * booth.photosPerPerson;
+      const group = await tx.select().from(boothSlotsTable).where(and(
+        eq(boothSlotsTable.boothId, booth.id),
+        gte(boothSlotsTable.position, groupStart),
+        lt(boothSlotsTable.position, groupStart + booth.photosPerPerson),
+      )).orderBy(asc(boothSlotsTable.position)).for("update");
+      if (group.length !== booth.photosPerPerson || !group.every((slot) => tokenMatches(headers.data["X-Participant-Token"], slot.claimTokenHash))) return "forbidden" as const;
+      if (!group.every((slot) => (slot.claimStatus === "staged" || slot.claimStatus === "submitted") && slot.mediaPath)) return "incomplete" as const;
+      const stagedIds = group.filter((slot) => slot.claimStatus === "staged").map((slot) => slot.id);
+      if (stagedIds.length) {
+        await tx.update(boothSlotsTable).set({ claimStatus: "submitted", submittedAt: new Date() }).where(inArray(boothSlotsTable.id, stagedIds));
+      }
+      const submitted = await tx.select({ id: boothSlotsTable.id }).from(boothSlotsTable).where(and(
+        eq(boothSlotsTable.boothId, booth.id),
+        eq(boothSlotsTable.claimStatus, "submitted"),
+      ));
+      if (submitted.length === booth.participantCount) {
+        await tx.update(boothsTable).set({ status: "complete", completedAt: new Date() }).where(eq(boothsTable.id, booth.id));
+      }
+      return "finalized" as const;
+    });
+    if (result === "forbidden") {
+      res.status(403).json({ error: "This participant link cannot finalize those photos." });
+      return;
+    }
+    if (result === "incomplete") {
+      res.status(409).json({ error: "Save every photo before finalizing." });
+      return;
+    }
+    const updated = await findBooth(params.data.privateToken);
+    if (!updated) {
+      res.status(404).json({ error: "This booth could not be found." });
+      return;
+    }
+    const state = await buildBoothState(updated, params.data.privateToken);
+    if (state.revealAvailable) {
+      void sendBoothReadyNotifications(updated.id, updated.name).catch((error) =>
+        req.log.warn({ err: error }, "Could not send booth-ready notification"),
+      );
+    }
+    res.json(state);
+  } catch (error) {
+    req.log.error({ err: error }, "Failed to finalize participant photos");
+    res.status(500).json({ error: "Your photos could not be finalized. Please try again." });
+  }
+});
+
 router.get(
   "/booths/:privateToken/slots/:slotId/photo",
   async (req, res): Promise<void> => {
@@ -542,7 +697,7 @@ router.get(
     }
     try {
       const booth = await findBooth(params.data.privateToken);
-      if (!booth || booth.expiresAt <= new Date()) {
+      if (!booth) {
         res.status(404).json({ error: "This booth is no longer available." });
         return;
       }
@@ -608,7 +763,7 @@ router.post(
     }
 
     const booth = await findBooth(params.data.privateToken);
-    if (!booth || booth.expiresAt <= new Date()) {
+    if (!booth) {
       res.status(404).json({ error: "This booth is no longer available." });
       return;
     }

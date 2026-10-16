@@ -25,9 +25,27 @@ export async function runAuthMigrations() {
       EXCEPTION WHEN duplicate_column THEN NULL;
       END $$
     `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS home_strip_booth_ids JSONB NOT NULL DEFAULT '[]'::jsonb
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_booth_access (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        booth_id UUID NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, booth_id)
+      )
+    `);
+    await client.query(`
+      ALTER TABLE booths ALTER COLUMN expires_at DROP NOT NULL
+    `);
+    await client.query(`
+      UPDATE booths SET expires_at = NULL WHERE expires_at IS NOT NULL
+    `);
     logger.info("Auth migrations applied");
   } catch (err) {
-    logger.error({ err }, "Auth migration failed (non-fatal)");
+    logger.error({ err }, "Database migration failed");
+    throw err;
   } finally {
     client.release();
   }

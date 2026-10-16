@@ -20,6 +20,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountArchive,
+  ArchiveHomeSelection,
+  ArchiveLinkInput,
+  ArchiveLinkResult,
+  ArchiveParticipationInput,
   AuthUser,
   BoothCreated,
   BoothInput,
@@ -654,6 +659,240 @@ export const useConfirmBoothFrame = <TError = ErrorType<unknown>,
       return useMutation(getConfirmBoothFrameMutationOptions(options));
     }
 
+export const getGetDraftPhotoUrl = (privateToken: string,
+    slotId: string,) => {
+
+
+
+
+  return `/api/booths/${privateToken}/slots/${slotId}/draft-photo`
+}
+
+/**
+ * @summary View a participant's own saved or finalized photo
+ */
+export const getDraftPhoto = async (privateToken: string,
+    slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDraftPhotoUrl(privateToken,slotId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDraftPhotoQueryKey = (privateToken: string,
+    slotId: string,) => {
+    return [
+    `/api/booths/${privateToken}/slots/${slotId}/draft-photo`
+    ] as const;
+    }
+
+
+export const getGetDraftPhotoQueryOptions = <TData = Awaited<ReturnType<typeof getDraftPhoto>>, TError = ErrorType<unknown>>(privateToken: string,
+    slotId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDraftPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDraftPhotoQueryKey(privateToken,slotId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDraftPhoto>>> = ({ signal }) => getDraftPhoto(privateToken,slotId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: privateToken !== null && privateToken !== undefined && slotId !== null && slotId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDraftPhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDraftPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getDraftPhoto>>>
+export type GetDraftPhotoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary View a participant's own saved or finalized photo
+ */
+
+export function useGetDraftPhoto<TData = Awaited<ReturnType<typeof getDraftPhoto>>, TError = ErrorType<unknown>>(
+ privateToken: string,
+    slotId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDraftPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDraftPhotoQueryOptions(privateToken,slotId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteDraftPhotoUrl = (privateToken: string,
+    slotId: string,) => {
+
+
+
+
+  return `/api/booths/${privateToken}/slots/${slotId}/draft-photo`
+}
+
+/**
+ * @summary Delete a saved photo before finalizing the participant's set
+ */
+export const deleteDraftPhoto = async (privateToken: string,
+    slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteDraftPhotoUrl(privateToken,slotId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteDraftPhotoMutationKey = () => ['deleteDraftPhoto'] as const;
+
+export const getDeleteDraftPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDraftPhoto>>, TError,DeleteDraftPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDraftPhoto>>, TError,DeleteDraftPhotoMutationVariables, TContext> => {
+
+const mutationKey = getDeleteDraftPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDraftPhoto>>, DeleteDraftPhotoMutationVariables> = (props) => {
+          const {privateToken,slotId} = props ?? {};
+
+          return  deleteDraftPhoto(privateToken,slotId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDraftPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDraftPhoto>>>
+
+    export type DeleteDraftPhotoMutationError = ErrorType<unknown>
+    export type DeleteDraftPhotoMutationVariables = {privateToken: string;slotId: string}
+
+    /**
+ * @summary Delete a saved photo before finalizing the participant's set
+ */
+export const useDeleteDraftPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDraftPhoto>>, TError,DeleteDraftPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDraftPhoto>>,
+        TError,
+        DeleteDraftPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteDraftPhotoMutationOptions(options));
+    }
+
+export const getFinalizeParticipantPhotosUrl = (privateToken: string,
+    slotId: string,) => {
+
+
+
+
+  return `/api/booths/${privateToken}/slots/${slotId}/finalize`
+}
+
+/**
+ * @summary Finalize every saved photo for one participant
+ */
+export const finalizeParticipantPhotos = async (privateToken: string,
+    slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<BoothState> => {
+
+  return customFetch<BoothState>(getFinalizeParticipantPhotosUrl(privateToken,slotId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getFinalizeParticipantPhotosMutationKey = () => ['finalizeParticipantPhotos'] as const;
+
+export const getFinalizeParticipantPhotosMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeParticipantPhotos>>, TError,FinalizeParticipantPhotosMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof finalizeParticipantPhotos>>, TError,FinalizeParticipantPhotosMutationVariables, TContext> => {
+
+const mutationKey = getFinalizeParticipantPhotosMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof finalizeParticipantPhotos>>, FinalizeParticipantPhotosMutationVariables> = (props) => {
+          const {privateToken,slotId} = props ?? {};
+
+          return  finalizeParticipantPhotos(privateToken,slotId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FinalizeParticipantPhotosMutationResult = NonNullable<Awaited<ReturnType<typeof finalizeParticipantPhotos>>>
+
+    export type FinalizeParticipantPhotosMutationError = ErrorType<unknown>
+    export type FinalizeParticipantPhotosMutationVariables = {privateToken: string;slotId: string}
+
+    /**
+ * @summary Finalize every saved photo for one participant
+ */
+export const useFinalizeParticipantPhotos = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeParticipantPhotos>>, TError,FinalizeParticipantPhotosMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof finalizeParticipantPhotos>>,
+        TError,
+        FinalizeParticipantPhotosMutationVariables,
+        TContext
+      > => {
+      return useMutation(getFinalizeParticipantPhotosMutationOptions(options));
+    }
+
 export const getSaveBoothCustomizationUrl = (privateToken: string,) => {
 
 
@@ -1224,6 +1463,429 @@ export function useGetMyBooths<TData = Awaited<ReturnType<typeof getMyBooths>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMyBoothsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkBoothToAccountUrl = () => {
+
+
+
+
+  return `/api/auth/archive/link`
+}
+
+/**
+ * @summary Add a creator-owned booth to the signed-in account
+ */
+export const linkBoothToAccount = async (archiveLinkInput: ArchiveLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<ArchiveLinkResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ArchiveLinkResult>(getLinkBoothToAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(archiveLinkInput)
+  }
+);}
+
+
+
+
+
+export const getLinkBoothToAccountMutationKey = () => ['linkBoothToAccount'] as const;
+
+export const getLinkBoothToAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkBoothToAccount>>, TError,LinkBoothToAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkBoothToAccount>>, TError,LinkBoothToAccountMutationVariables, TContext> => {
+
+const mutationKey = getLinkBoothToAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkBoothToAccount>>, LinkBoothToAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  linkBoothToAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkBoothToAccountMutationResult = NonNullable<Awaited<ReturnType<typeof linkBoothToAccount>>>
+    export type LinkBoothToAccountMutationBody = BodyType<ArchiveLinkInput>
+    export type LinkBoothToAccountMutationError = ErrorType<unknown>
+    export type LinkBoothToAccountMutationVariables = {data: BodyType<ArchiveLinkInput>}
+
+    /**
+ * @summary Add a creator-owned booth to the signed-in account
+ */
+export const useLinkBoothToAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkBoothToAccount>>, TError,LinkBoothToAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkBoothToAccount>>,
+        TError,
+        LinkBoothToAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLinkBoothToAccountMutationOptions(options));
+    }
+
+export const getLinkParticipationToAccountUrl = () => {
+
+
+
+
+  return `/api/auth/archive/link-participation`
+}
+
+/**
+ * @summary Add a joined booth to the signed-in account
+ */
+export const linkParticipationToAccount = async (archiveParticipationInput: ArchiveParticipationInput, options?: Parameters<typeof customFetch>[1]): Promise<ArchiveLinkResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ArchiveLinkResult>(getLinkParticipationToAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(archiveParticipationInput)
+  }
+);}
+
+
+
+
+
+export const getLinkParticipationToAccountMutationKey = () => ['linkParticipationToAccount'] as const;
+
+export const getLinkParticipationToAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkParticipationToAccount>>, TError,LinkParticipationToAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkParticipationToAccount>>, TError,LinkParticipationToAccountMutationVariables, TContext> => {
+
+const mutationKey = getLinkParticipationToAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkParticipationToAccount>>, LinkParticipationToAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  linkParticipationToAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkParticipationToAccountMutationResult = NonNullable<Awaited<ReturnType<typeof linkParticipationToAccount>>>
+    export type LinkParticipationToAccountMutationBody = BodyType<ArchiveParticipationInput>
+    export type LinkParticipationToAccountMutationError = ErrorType<unknown>
+    export type LinkParticipationToAccountMutationVariables = {data: BodyType<ArchiveParticipationInput>}
+
+    /**
+ * @summary Add a joined booth to the signed-in account
+ */
+export const useLinkParticipationToAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkParticipationToAccount>>, TError,LinkParticipationToAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkParticipationToAccount>>,
+        TError,
+        LinkParticipationToAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLinkParticipationToAccountMutationOptions(options));
+    }
+
+export const getGetAccountArchiveUrl = () => {
+
+
+
+
+  return `/api/auth/archive`
+}
+
+/**
+ * @summary List revealed photostrips owned by the signed-in account
+ */
+export const getAccountArchive = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountArchive> => {
+
+  return customFetch<AccountArchive>(getGetAccountArchiveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountArchiveQueryKey = () => {
+    return [
+    `/api/auth/archive`
+    ] as const;
+    }
+
+
+export const getGetAccountArchiveQueryOptions = <TData = Awaited<ReturnType<typeof getAccountArchive>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountArchive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountArchiveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountArchive>>> = ({ signal }) => getAccountArchive({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountArchive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountArchiveQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountArchive>>>
+export type GetAccountArchiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List revealed photostrips owned by the signed-in account
+ */
+
+export function useGetAccountArchive<TData = Awaited<ReturnType<typeof getAccountArchive>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountArchive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountArchiveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveArchiveHomeSelectionUrl = () => {
+
+
+
+
+  return `/api/auth/archive/home-selection`
+}
+
+/**
+ * @summary Choose account photostrips for the home page
+ */
+export const saveArchiveHomeSelection = async (archiveHomeSelection: ArchiveHomeSelection, options?: Parameters<typeof customFetch>[1]): Promise<ArchiveHomeSelection> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ArchiveHomeSelection>(getSaveArchiveHomeSelectionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(archiveHomeSelection)
+  }
+);}
+
+
+
+
+
+export const getSaveArchiveHomeSelectionMutationKey = () => ['saveArchiveHomeSelection'] as const;
+
+export const getSaveArchiveHomeSelectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveArchiveHomeSelection>>, TError,SaveArchiveHomeSelectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveArchiveHomeSelection>>, TError,SaveArchiveHomeSelectionMutationVariables, TContext> => {
+
+const mutationKey = getSaveArchiveHomeSelectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveArchiveHomeSelection>>, SaveArchiveHomeSelectionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveArchiveHomeSelection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveArchiveHomeSelectionMutationResult = NonNullable<Awaited<ReturnType<typeof saveArchiveHomeSelection>>>
+    export type SaveArchiveHomeSelectionMutationBody = BodyType<ArchiveHomeSelection>
+    export type SaveArchiveHomeSelectionMutationError = ErrorType<unknown>
+    export type SaveArchiveHomeSelectionMutationVariables = {data: BodyType<ArchiveHomeSelection>}
+
+    /**
+ * @summary Choose account photostrips for the home page
+ */
+export const useSaveArchiveHomeSelection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveArchiveHomeSelection>>, TError,SaveArchiveHomeSelectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveArchiveHomeSelection>>,
+        TError,
+        SaveArchiveHomeSelectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveArchiveHomeSelectionMutationOptions(options));
+    }
+
+export const getGetAccountArchivePhotoUrl = (boothId: string,
+    slotId: string,) => {
+
+
+
+
+  return `/api/auth/archive/${boothId}/slots/${slotId}/photo`
+}
+
+/**
+ * @summary Download a revealed frame owned by the signed-in account
+ */
+export const getAccountArchivePhoto = async (boothId: string,
+    slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetAccountArchivePhotoUrl(boothId,slotId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountArchivePhotoQueryKey = (boothId: string,
+    slotId: string,) => {
+    return [
+    `/api/auth/archive/${boothId}/slots/${slotId}/photo`
+    ] as const;
+    }
+
+
+export const getGetAccountArchivePhotoQueryOptions = <TData = Awaited<ReturnType<typeof getAccountArchivePhoto>>, TError = ErrorType<unknown>>(boothId: string,
+    slotId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountArchivePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountArchivePhotoQueryKey(boothId,slotId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountArchivePhoto>>> = ({ signal }) => getAccountArchivePhoto(boothId,slotId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: boothId !== null && boothId !== undefined && slotId !== null && slotId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountArchivePhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountArchivePhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountArchivePhoto>>>
+export type GetAccountArchivePhotoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Download a revealed frame owned by the signed-in account
+ */
+
+export function useGetAccountArchivePhoto<TData = Awaited<ReturnType<typeof getAccountArchivePhoto>>, TError = ErrorType<unknown>>(
+ boothId: string,
+    slotId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountArchivePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountArchivePhotoQueryOptions(boothId,slotId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -123,7 +123,6 @@ export const BoothStateStatus = {
   collecting: 'collecting',
   complete: 'complete',
   revealed: 'revealed',
-  expired: 'expired',
   deleted: 'deleted',
 } as const;
 
@@ -133,6 +132,7 @@ export type BoothSlotClaimStatus = typeof BoothSlotClaimStatus[keyof typeof Boot
 export const BoothSlotClaimStatus = {
   open: 'open',
   claimed: 'claimed',
+  staged: 'staged',
   submitted: 'submitted',
 } as const;
 
@@ -452,6 +452,36 @@ export interface BoothSummary {
   status: string;
   participantCount: number;
   createdAt: string;
+}
+
+export interface ArchiveLinkInput {
+  privateToken: string;
+  creatorToken: string;
+}
+
+export interface ArchiveLinkResult {
+  id: string;
+}
+
+export interface ArchiveParticipationInput {
+  privateToken: string;
+  participantToken: string;
+  slotId: string;
+}
+
+export interface ArchiveHomeSelection {
+  /** @maxItems 12 */
+  selectedIds: string[];
+}
+
+export interface AccountArchiveEntry {
+  id: string;
+  booth: BoothState;
+}
+
+export interface AccountArchive {
+  entries: AccountArchiveEntry[];
+  selectedIds: string[];
 }
 
 export type ParticipantTokenParameter = string;

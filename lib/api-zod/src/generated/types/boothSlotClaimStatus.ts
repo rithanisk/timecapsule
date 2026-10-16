@@ -12,5 +12,6 @@ export type BoothSlotClaimStatus = typeof BoothSlotClaimStatus[keyof typeof Boot
 export const BoothSlotClaimStatus = {
   open: 'open',
   claimed: 'claimed',
+  staged: 'staged',
   submitted: 'submitted',
 } as const;

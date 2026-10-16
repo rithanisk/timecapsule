@@ -68,8 +68,8 @@ export function LoadingCard() {
   return <div aria-label="Loading booth" className="paper-card animate-pulse rounded-[22px] p-6"><div className="h-5 w-1/3 rounded bg-[#e8e0d5]" /><div className="mt-5 h-3 w-full rounded bg-[#eee8df]" /><div className="mt-3 h-3 w-2/3 rounded bg-[#eee8df]" /></div>;
 }
 
-export function ProgressDots({ total, complete }: { total: number; complete: number }) {
-  return <div className="flex flex-wrap gap-2" aria-label={`${complete} of ${total} frames confirmed`}>
+export function ProgressDots({ total, complete, noun = 'frames' }: { total: number; complete: number; noun?: string }) {
+  return <div className="flex flex-wrap gap-2" aria-label={`${complete} of ${total} ${noun} confirmed`}>
     {Array.from({ length: total }, (_, index) => <span key={index} className={`size-3 rounded-full ${index < complete ? 'bg-[#a9c7bd]' : 'border border-[#bdb3a7] bg-[#fffdf8]'}`} />)}
   </div>;
 }
@@ -115,13 +115,19 @@ export function CopyButton({ text, children = 'Copy link' }: { text: string; chi
   return <Button variant="secondary" onClick={copy} data-testid="button-copy-link">{copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} />{children}</>}</Button>;
 }
 
-export function SlotList({ slots, hidePhotos = false }: { slots: Array<{ id: string; displayName: string; claimStatus: string; photoUrl: string | null }>; hidePhotos?: boolean }) {
+export function SlotList({ slots, photosPerPerson = 1 }: { slots: Array<{ id: string; displayName: string; claimStatus: string; photoUrl: string | null }>; photosPerPerson?: number }) {
+  const groups = Array.from({ length: Math.ceil(slots.length / photosPerPerson) }, (_, index) => slots.slice(index * photosPerPerson, (index + 1) * photosPerPerson));
   return <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-    {slots.map((slot, index) => <li key={slot.id} className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e3dcd1] bg-[#fffdf8] p-3" data-testid={`slot-status-${slot.id}`}>
-      {slot.photoUrl && !hidePhotos ? <img src={slot.photoUrl} alt={`${slot.displayName} confirmed frame`} className="size-12 rounded-xl object-cover" /> : <span className={`grid size-12 place-items-center rounded-xl text-lg font-semibold ${['bg-[#e9c9bf]','bg-[#d7e5df]','bg-[#dce5f2]','bg-[#f2e5c8]'][index % 4]}`}>{slot.displayName?.slice(0,1).toUpperCase() || '?'}</span>}
-      <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{slot.displayName || `Frame ${index + 1}`}</strong><small className="text-xs text-[#756f66]">{slot.claimStatus === 'submitted' ? 'Frame confirmed' : slot.claimStatus === 'claimed' ? 'Choosing a moment' : 'Waiting for a friend'}</small></span>
-      {slot.claimStatus === 'submitted' ? <Check size={18} className="text-[#5e8e7e]" /> : <span className="size-2 rounded-full bg-[#e4c989]" />}
-    </li>)}
+    {groups.map((group, index) => {
+      const slot = group[0];
+      const complete = group.every((item) => item.claimStatus === 'submitted');
+      const submitted = group.filter((item) => item.claimStatus === 'submitted').length;
+      return <li key={slot.id} className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e3dcd1] bg-[#fffdf8] p-3" data-testid={`slot-status-${slot.id}`}>
+        <span className={`grid size-12 place-items-center rounded-xl text-lg font-semibold ${['bg-[#e9c9bf]','bg-[#d7e5df]','bg-[#dce5f2]','bg-[#f2e5c8]'][index % 4]}`}>{slot.displayName?.slice(0,1).toUpperCase() || '?'}</span>
+        <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{slot.displayName || `Person ${index + 1}`}</strong><small className="text-xs text-[#756f66]">{complete ? 'Finalized' : submitted ? `${submitted} of ${group.length} photos finalized` : group.some((item) => item.claimStatus === 'claimed' || item.claimStatus === 'staged') ? 'Choosing moments' : 'Waiting for a friend'}</small></span>
+        {complete ? <Check size={18} className="text-[#5e8e7e]" /> : <span className="size-2 rounded-full bg-[#e4c989]" />}
+      </li>;
+    })}
   </ul>;
 }
 

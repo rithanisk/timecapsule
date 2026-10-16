@@ -109,14 +109,14 @@ export const CreateBoothResponse = zod.object({
   "photosPerPerson": zod.number().int().min(1).max(createBoothResponseStatePhotosPerPersonMax).default(createBoothResponseStatePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
+  "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
   "displayName": zod.string(),
-  "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
+  "claimStatus": zod.enum(['open', 'claimed', 'staged', 'submitted']),
   "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
@@ -213,14 +213,14 @@ export const GetBoothResponse = zod.object({
   "photosPerPerson": zod.number().int().min(1).max(getBoothResponsePhotosPerPersonMax).default(getBoothResponsePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
+  "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
   "displayName": zod.string(),
-  "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
+  "claimStatus": zod.enum(['open', 'claimed', 'staged', 'submitted']),
   "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
@@ -425,14 +425,14 @@ export const ConfirmBoothFrameResponse = zod.object({
   "photosPerPerson": zod.number().int().min(1).max(confirmBoothFrameResponsePhotosPerPersonMax).default(confirmBoothFrameResponsePhotosPerPersonDefault),
   "revealMode": zod.enum(['complete', 'scheduled']),
   "scheduledRevealAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['collecting', 'complete', 'revealed', 'expired', 'deleted']),
+  "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
   "displayName": zod.string(),
-  "claimStatus": zod.enum(['open', 'claimed', 'submitted']),
+  "claimStatus": zod.enum(['open', 'claimed', 'staged', 'submitted']),
   "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
 })),
   "customization": zod.object({
@@ -462,6 +462,164 @@ export const ConfirmBoothFrameResponse = zod.object({
   "panX": zod.number(),
   "panY": zod.number(),
   "scale": zod.number().min(1).max(confirmBoothFrameResponseCustomizationSlotAdjustmentsItemScaleMax)
+})).optional()
+})
+})
+
+
+/**
+ * @summary View a participant's own saved or finalized photo
+ */
+export const getDraftPhotoPathPrivateTokenMin = 32;
+
+
+
+export const GetDraftPhotoParams = zod.object({
+  "privateToken": zod.coerce.string().min(getDraftPhotoPathPrivateTokenMin),
+  "slotId": zod.coerce.string()
+})
+
+export const getDraftPhotoHeaderXParticipantTokenMin = 32;
+
+
+
+export const GetDraftPhotoHeader = zod.object({
+  "X-Participant-Token": zod.string().min(getDraftPhotoHeaderXParticipantTokenMin)
+})
+
+export const GetDraftPhotoResponse = zod.unknown()
+
+
+/**
+ * @summary Delete a saved photo before finalizing the participant's set
+ */
+export const deleteDraftPhotoPathPrivateTokenMin = 32;
+
+
+
+export const DeleteDraftPhotoParams = zod.object({
+  "privateToken": zod.coerce.string().min(deleteDraftPhotoPathPrivateTokenMin),
+  "slotId": zod.coerce.string()
+})
+
+export const deleteDraftPhotoHeaderXParticipantTokenMin = 32;
+
+
+
+export const DeleteDraftPhotoHeader = zod.object({
+  "X-Participant-Token": zod.string().min(deleteDraftPhotoHeaderXParticipantTokenMin)
+})
+
+export const DeleteDraftPhotoResponse = zod.void()
+
+
+/**
+ * @summary Finalize every saved photo for one participant
+ */
+export const finalizeParticipantPhotosPathPrivateTokenMin = 32;
+
+
+
+export const FinalizeParticipantPhotosParams = zod.object({
+  "privateToken": zod.coerce.string().min(finalizeParticipantPhotosPathPrivateTokenMin),
+  "slotId": zod.coerce.string()
+})
+
+export const finalizeParticipantPhotosHeaderXParticipantTokenMin = 32;
+
+
+
+export const FinalizeParticipantPhotosHeader = zod.object({
+  "X-Participant-Token": zod.string().min(finalizeParticipantPhotosHeaderXParticipantTokenMin)
+})
+
+export const finalizeParticipantPhotosResponsePhotosPerPersonDefault = 1;
+export const finalizeParticipantPhotosResponsePhotosPerPersonMax = 4;
+
+export const finalizeParticipantPhotosResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
+export const finalizeParticipantPhotosResponseCustomizationCaptionMax = 120;
+
+export const finalizeParticipantPhotosResponseCustomizationCaptionPositionDefault = `bottom`;
+export const finalizeParticipantPhotosResponseCustomizationCaptionFontDefault = `serif`;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemIdMax = 60;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemLabelMax = 120;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemXMin = 0;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemXMax = 1;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemYMin = 0;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemYMax = 1;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemWidthMin = 0.03;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemWidthMax = 1;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemHeightMin = 0.03;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemHeightMax = 1;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemRotationMin = -360;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemRotationMax = 360;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemColorMax = 32;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemZIndexMin = 0;
+export const finalizeParticipantPhotosResponseCustomizationObjectsItemZIndexMax = 100;
+
+export const finalizeParticipantPhotosResponseCustomizationObjectsMax = 40;
+
+export const finalizeParticipantPhotosResponseCustomizationSlotAdjustmentsItemScaleMax = 3;
+
+
+
+export const FinalizeParticipantPhotosResponse = zod.object({
+  "name": zod.string(),
+  "subtitle": zod.string(),
+  "occasion": zod.string(),
+  "participantCount": zod.number().int(),
+  "mode": zod.enum(['classic', 'scrapbook']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "prompt": zod.string(),
+  "countdownSeconds": zod.number().int(),
+  "photosPerPerson": zod.number().int().min(1).max(finalizeParticipantPhotosResponsePhotosPerPersonMax).default(finalizeParticipantPhotosResponsePhotosPerPersonDefault),
+  "revealMode": zod.enum(['complete', 'scheduled']),
+  "scheduledRevealAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
+  "completedCount": zod.number().int(),
+  "revealAvailable": zod.boolean(),
+  "slots": zod.array(zod.object({
+  "id": zod.string(),
+  "position": zod.number().int(),
+  "displayName": zod.string(),
+  "claimStatus": zod.enum(['open', 'claimed', 'staged', 'submitted']),
+  "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
+})),
+  "customization": zod.object({
+  "mode": zod.enum(['classic', 'scrapbook']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
+  "frameColor": zod.string().regex(finalizeParticipantPhotosResponseCustomizationFrameColorRegExp),
+  "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
+  "showDate": zod.boolean(),
+  "caption": zod.string().max(finalizeParticipantPhotosResponseCustomizationCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(finalizeParticipantPhotosResponseCustomizationCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(finalizeParticipantPhotosResponseCustomizationCaptionFontDefault),
+  "objects": zod.array(zod.object({
+  "id": zod.string().max(finalizeParticipantPhotosResponseCustomizationObjectsItemIdMax),
+  "kind": zod.enum(['text', 'sticker']),
+  "label": zod.string().max(finalizeParticipantPhotosResponseCustomizationObjectsItemLabelMax),
+  "x": zod.number().min(finalizeParticipantPhotosResponseCustomizationObjectsItemXMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemXMax),
+  "y": zod.number().min(finalizeParticipantPhotosResponseCustomizationObjectsItemYMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemYMax),
+  "width": zod.number().min(finalizeParticipantPhotosResponseCustomizationObjectsItemWidthMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemWidthMax),
+  "height": zod.number().min(finalizeParticipantPhotosResponseCustomizationObjectsItemHeightMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemHeightMax),
+  "rotation": zod.number().min(finalizeParticipantPhotosResponseCustomizationObjectsItemRotationMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemRotationMax),
+  "color": zod.string().max(finalizeParticipantPhotosResponseCustomizationObjectsItemColorMax),
+  "zIndex": zod.number().int().min(finalizeParticipantPhotosResponseCustomizationObjectsItemZIndexMin).max(finalizeParticipantPhotosResponseCustomizationObjectsItemZIndexMax)
+})).max(finalizeParticipantPhotosResponseCustomizationObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(finalizeParticipantPhotosResponseCustomizationSlotAdjustmentsItemScaleMax)
 })).optional()
 })
 })
@@ -730,5 +888,164 @@ export const GetMyBoothsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const GetMyBoothsResponse = zod.array(GetMyBoothsResponseItem)
+
+
+/**
+ * @summary Add a creator-owned booth to the signed-in account
+ */
+export const LinkBoothToAccountBody = zod.object({
+  "privateToken": zod.string(),
+  "creatorToken": zod.string()
+})
+
+export const LinkBoothToAccountResponse = zod.object({
+  "id": zod.string().uuid()
+})
+
+
+/**
+ * @summary Add a joined booth to the signed-in account
+ */
+export const LinkParticipationToAccountBody = zod.object({
+  "privateToken": zod.string(),
+  "participantToken": zod.string(),
+  "slotId": zod.string().uuid()
+})
+
+export const LinkParticipationToAccountResponse = zod.object({
+  "id": zod.string().uuid()
+})
+
+
+/**
+ * @summary List revealed photostrips owned by the signed-in account
+ */
+export const getAccountArchiveResponseEntriesItemBoothPhotosPerPersonDefault = 1;
+export const getAccountArchiveResponseEntriesItemBoothPhotosPerPersonMax = 4;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
+export const getAccountArchiveResponseEntriesItemBoothCustomizationCaptionMax = 120;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationCaptionPositionDefault = `bottom`;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationCaptionFontDefault = `serif`;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemIdMax = 60;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemLabelMax = 120;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemXMin = 0;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemXMax = 1;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemYMin = 0;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemYMax = 1;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemWidthMin = 0.03;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemWidthMax = 1;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemHeightMin = 0.03;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemHeightMax = 1;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemRotationMin = -360;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemRotationMax = 360;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemColorMax = 32;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemZIndexMin = 0;
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemZIndexMax = 100;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationObjectsMax = 40;
+
+export const getAccountArchiveResponseEntriesItemBoothCustomizationSlotAdjustmentsItemScaleMax = 3;
+
+
+
+export const GetAccountArchiveResponse = zod.object({
+  "entries": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "booth": zod.object({
+  "name": zod.string(),
+  "subtitle": zod.string(),
+  "occasion": zod.string(),
+  "participantCount": zod.number().int(),
+  "mode": zod.enum(['classic', 'scrapbook']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "prompt": zod.string(),
+  "countdownSeconds": zod.number().int(),
+  "photosPerPerson": zod.number().int().min(1).max(getAccountArchiveResponseEntriesItemBoothPhotosPerPersonMax).default(getAccountArchiveResponseEntriesItemBoothPhotosPerPersonDefault),
+  "revealMode": zod.enum(['complete', 'scheduled']),
+  "scheduledRevealAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
+  "completedCount": zod.number().int(),
+  "revealAvailable": zod.boolean(),
+  "slots": zod.array(zod.object({
+  "id": zod.string(),
+  "position": zod.number().int(),
+  "displayName": zod.string(),
+  "claimStatus": zod.enum(['open', 'claimed', 'staged', 'submitted']),
+  "photoUrl": zod.string().nullable().describe('Relative private route; null until the reveal gate opens.')
+})),
+  "customization": zod.object({
+  "mode": zod.enum(['classic', 'scrapbook']),
+  "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
+  "frameType": zod.enum(['clean', 'black', 'solid', 'polaroid', 'film', 'torn', 'pattern', 'retro', 'seasonal', 'whimsical', 'film-noir']),
+  "frameColor": zod.string().regex(getAccountArchiveResponseEntriesItemBoothCustomizationFrameColorRegExp),
+  "filter": zod.enum(['original', 'soft-bw', 'high-contrast', 'warm-film', 'cool-flash', 'faded', 'disposable', 'sepia', 'grain']),
+  "showDate": zod.boolean(),
+  "caption": zod.string().max(getAccountArchiveResponseEntriesItemBoothCustomizationCaptionMax).optional(),
+  "captionPosition": zod.enum(['bottom', 'top']).default(getAccountArchiveResponseEntriesItemBoothCustomizationCaptionPositionDefault),
+  "captionFont": zod.enum(['serif', 'sans', 'handwritten']).default(getAccountArchiveResponseEntriesItemBoothCustomizationCaptionFontDefault),
+  "objects": zod.array(zod.object({
+  "id": zod.string().max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemIdMax),
+  "kind": zod.enum(['text', 'sticker']),
+  "label": zod.string().max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemLabelMax),
+  "x": zod.number().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemXMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemXMax),
+  "y": zod.number().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemYMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemYMax),
+  "width": zod.number().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemWidthMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemWidthMax),
+  "height": zod.number().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemHeightMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemHeightMax),
+  "rotation": zod.number().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemRotationMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemRotationMax),
+  "color": zod.string().max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemColorMax),
+  "zIndex": zod.number().int().min(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemZIndexMin).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsItemZIndexMax)
+})).max(getAccountArchiveResponseEntriesItemBoothCustomizationObjectsMax),
+  "slotAdjustments": zod.array(zod.object({
+  "slotIndex": zod.number().int(),
+  "panX": zod.number(),
+  "panY": zod.number(),
+  "scale": zod.number().min(1).max(getAccountArchiveResponseEntriesItemBoothCustomizationSlotAdjustmentsItemScaleMax)
+})).optional()
+})
+})
+})),
+  "selectedIds": zod.array(zod.string().uuid())
+})
+
+
+/**
+ * @summary Choose account photostrips for the home page
+ */
+export const saveArchiveHomeSelectionBodySelectedIdsMax = 12;
+
+
+
+export const SaveArchiveHomeSelectionBody = zod.object({
+  "selectedIds": zod.array(zod.string().uuid()).max(saveArchiveHomeSelectionBodySelectedIdsMax)
+})
+
+export const saveArchiveHomeSelectionResponseSelectedIdsMax = 12;
+
+
+
+export const SaveArchiveHomeSelectionResponse = zod.object({
+  "selectedIds": zod.array(zod.string().uuid()).max(saveArchiveHomeSelectionResponseSelectedIdsMax)
+})
+
+
+/**
+ * @summary Download a revealed frame owned by the signed-in account
+ */
+export const GetAccountArchivePhotoParams = zod.object({
+  "boothId": zod.coerce.string().uuid(),
+  "slotId": zod.coerce.string()
+})
+
+export const GetAccountArchivePhotoResponse = zod.unknown()
 
 

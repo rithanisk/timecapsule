@@ -2,7 +2,6 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { runAuthMigrations } from "./lib/runMigrations";
 import { processReadyBoothNotifications } from "./lib/pushNotifications";
-import { purgeExpiredBooths } from "./lib/retention";
 
 const rawPort = process.env["PORT"];
 
@@ -18,16 +17,18 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-void runAuthMigrations();
+void runAuthMigrations()
+  .then(() => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-});
+      logger.info({ port }, "Server listening");
+    });
+  })
+  .catch(() => process.exit(1));
 
 const pushSchedule = setInterval(() => {
   void processReadyBoothNotifications().catch((error) => {
@@ -36,16 +37,6 @@ const pushSchedule = setInterval(() => {
 }, 60_000);
 pushSchedule.unref();
 
-const retentionSchedule = setInterval(() => {
-  void purgeExpiredBooths().catch((error) => {
-    logger.error({ err: error }, "Expired booth cleanup failed");
-  });
-}, 60 * 60 * 1000);
-retentionSchedule.unref();
-
 void processReadyBoothNotifications().catch((error) => {
   logger.error({ err: error }, "Initial booth-ready notification scan failed");
-});
-void purgeExpiredBooths().catch((error) => {
-  logger.error({ err: error }, "Initial expired booth cleanup failed");
 });

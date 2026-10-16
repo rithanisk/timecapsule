@@ -1,6 +1,8 @@
 # Timecapsule
 
-Timecapsule is a private, asynchronous photo booth for 2–6 people. Each person claims a frame from an invite link and confirms one photo. Frames stay hidden until everyone has submitted; then the group can reveal, edit, and download the keepsake.
+Timecapsule is a private, asynchronous photo booth for 2–6 people. Each person claims a place from an invite link and confirms one or more photos. Frames stay hidden until everyone has submitted; then the group can reveal, edit, and download the keepsake.
+
+When a booth asks for multiple photos per person, each confirmed shot is saved to that participant's private camera roll. They can review, delete, or retake saved shots before finalizing the whole set. The group reveal only counts that person's photos after they finalize.
 
 ## Workspace
 
@@ -28,10 +30,11 @@ pnpm --filter @workspace/api-spec run codegen
 
 ## Privacy and retention
 
-- There are no accounts. High-entropy booth, creator, and participant tokens authorize access; only token hashes are stored for the creator and participant credentials.
+- Accounts are optional. Signed-in creators and participants can see revealed booths and their home page photostrip choices across devices. Guest booth access still uses private links stored on the current device. Creator and participant token hashes are stored in the database.
+- Photo files are stored in private App Storage; PostgreSQL stores booth, slot, ownership, customization, and home selection records with paths to those files.
 - App Storage objects remain private. A frame is uploaded only after the participant confirms it; the API validates and normalizes it to JPEG, rotating pixels according to camera orientation and stripping embedded metadata.
 - Photo routes check the booth reveal gate and disable caching. API logs redact booth tokens.
-- Booth media and database rows are purged after 90 days. The API cleanup runs at startup and hourly; failed media deletion leaves the database row for a later retry.
+- Booth photos and database records have no automatic expiry. The creator can explicitly delete a booth and its media using the private creator link.
 - Share private invite links only with the intended participants. Anyone who receives a booth link can see its progress, but no frame is returned before the reveal gate opens.
 
 ## Optional push notifications

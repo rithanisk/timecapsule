@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import {
   CapturePage,
+  ArchivePage,
   CreateBoothPage,
   CreatorStylePage,
   BoothManagePage,
@@ -36,6 +37,8 @@ function Router() {
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
         <Route path="/create" component={CreateBoothPage} />
+        <Route path="/archive/:boothId/reveal" component={RevealPage} />
+        <Route path="/archive" component={ArchivePage} />
         <Route path="/join/:privateToken/capture" component={CapturePage} />
         <Route path="/join/:privateToken" component={JoinPage} />
         <Route path="/booth/:privateToken/reveal" component={RevealPage} />

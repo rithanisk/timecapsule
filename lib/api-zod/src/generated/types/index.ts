@@ -7,6 +7,12 @@
  */
 
 export * from './accessTokenParameter';
+export * from './accountArchive';
+export * from './accountArchiveEntry';
+export * from './archiveHomeSelection';
+export * from './archiveLinkInput';
+export * from './archiveLinkResult';
+export * from './archiveParticipationInput';
 export * from './authUser';
 export * from './boothCreated';
 export * from './boothInput';

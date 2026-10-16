@@ -133,6 +133,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BoothState"
+  /booths/{privateToken}/slots/{slotId}/draft-photo:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+      - $ref: "#/components/parameters/SlotId"
+      - $ref: "#/components/parameters/ParticipantToken"
+    get:
+      operationId: getDraftPhoto
+      tags: [booths]
+      summary: View a participant's own saved or finalized photo
+      responses:
+        "200":
+          description: Private saved photo
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+    delete:
+      operationId: deleteDraftPhoto
+      tags: [booths]
+      summary: Delete a saved photo before finalizing the participant's set
+      responses:
+        "204":
+          description: Saved photo deleted
+  /booths/{privateToken}/slots/{slotId}/finalize:
+    parameters:
+      - $ref: "#/components/parameters/PrivateToken"
+      - $ref: "#/components/parameters/SlotId"
+      - $ref: "#/components/parameters/ParticipantToken"
+    post:
+      operationId: finalizeParticipantPhotos
+      tags: [booths]
+      summary: Finalize every saved photo for one participant
+      responses:
+        "200":
+          description: Finalized photos and updated booth status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoothState"
   /booths/{privateToken}/customization:
     parameters:
       - $ref: "#/components/parameters/PrivateToken"
@@ -250,6 +288,89 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/BoothSummary"
+  /auth/archive/link:
+    post:
+      operationId: linkBoothToAccount
+      tags: [auth]
+      summary: Add a creator-owned booth to the signed-in account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveLinkInput"
+      responses:
+        "200":
+          description: Linked booth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveLinkResult"
+  /auth/archive/link-participation:
+    post:
+      operationId: linkParticipationToAccount
+      tags: [auth]
+      summary: Add a joined booth to the signed-in account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveParticipationInput"
+      responses:
+        "200":
+          description: Linked booth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveLinkResult"
+  /auth/archive:
+    get:
+      operationId: getAccountArchive
+      tags: [auth]
+      summary: List revealed photostrips owned by the signed-in account
+      responses:
+        "200":
+          description: Account archive and home page selections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountArchive"
+  /auth/archive/home-selection:
+    put:
+      operationId: saveArchiveHomeSelection
+      tags: [auth]
+      summary: Choose account photostrips for the home page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveHomeSelection"
+      responses:
+        "200":
+          description: Saved selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveHomeSelection"
+  /auth/archive/{boothId}/slots/{slotId}/photo:
+    parameters:
+      - name: boothId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: "#/components/parameters/SlotId"
+    get:
+      operationId: getAccountArchivePhoto
+      tags: [auth]
+      summary: Download a revealed frame owned by the signed-in account
+      responses:
+        "200":
+          description: Photo bytes
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
 components:
   parameters:
     PrivateToken:
@@ -336,7 +457,7 @@ components:
         photosPerPerson: { type: integer, minimum: 1, maximum: 4, default: 1 }
         revealMode: { type: string, enum: [complete, scheduled] }
         scheduledRevealAt: { type: ["string", "null"], format: date-time }
-        status: { type: string, enum: [collecting, complete, revealed, expired, deleted] }
+        status: { type: string, enum: [collecting, complete, revealed, deleted] }
         completedCount: { type: integer }
         revealAvailable: { type: boolean }
         slots:
@@ -350,7 +471,7 @@ components:
         id: { type: string }
         position: { type: integer }
         displayName: { type: string }
-        claimStatus: { type: string, enum: [open, claimed, submitted] }
+        claimStatus: { type: string, enum: [open, claimed, staged, submitted] }
         photoUrl: { type: ["string", "null"], description: Relative private route; null until the reveal gate opens. }
     SlotClaimInput:
       type: object
@@ -479,4 +600,46 @@ components:
         status: { type: string }
         participantCount: { type: integer }
         createdAt: { type: string, format: date-time }
-
+    ArchiveLinkInput:
+      type: object
+      required: [privateToken, creatorToken]
+      properties:
+        privateToken: { type: string }
+        creatorToken: { type: string }
+    ArchiveLinkResult:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    ArchiveParticipationInput:
+      type: object
+      required: [privateToken, participantToken, slotId]
+      properties:
+        privateToken: { type: string }
+        participantToken: { type: string }
+        slotId: { type: string, format: uuid }
+    ArchiveHomeSelection:
+      type: object
+      required: [selectedIds]
+      properties:
+        selectedIds:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    AccountArchiveEntry:
+      type: object
+      required: [id, booth]
+      properties:
+        id: { type: string, format: uuid }
+        booth: { $ref: "#/components/schemas/BoothState" }
+    AccountArchive:
+      type: object
+      required: [entries, selectedIds]
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/AccountArchiveEntry" }
+        selectedIds:
+          type: array
+          items: { type: string, format: uuid }

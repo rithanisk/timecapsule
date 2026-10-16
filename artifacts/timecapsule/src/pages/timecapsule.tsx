@@ -1,5 +1,6 @@
 import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type BoothInput, type BoothState, type CanvasObject, type CustomizationInput,
@@ -9,11 +10,13 @@ import {
   getGetBoothQueryKey, getGetMyBoothsQueryKey, useClaimBoothSlot, useConfirmBoothFrame, useCreateBooth,
   useDeleteBooth, useGetBooth, useGetMyBooths, useRequestFrameUpload, useSaveBoothCustomization,
   useSubscribeToBoothReady,
+  saveBoothCustomization,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, TopBar, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
 import { sampleStripPhotos } from '@/home-samples';
+import { useArchiveBooths } from '@/lib/archive';
 
 // SVG asset stickers
 import stickerCherry from '@assets/cherry-svgrepo-com.svg';
@@ -59,6 +62,7 @@ const creatorKey = (token: string) => `tc-creator:${token}`;
 const participantKey = (token: string, slotId: string) => `tc-participant:${token}:${slotId}`;
 const participantPrefix = (token: string) => `tc-participant:${token}:`;
 const confirmedKey = (token: string, slotId: string) => `tc-confirmed:${token}:${slotId}`;
+const pendingFrameKey = (token: string) => `tc-pending-frame:${token}`;
 const activeBoothKey = 'tc-active-booth';
 
 function findAccessToken(privateToken: string) {
@@ -78,7 +82,7 @@ function useBooth(privateToken: string) {
   }, [privateToken]);
   return useGetBooth(privateToken, { query: { queryKey: getGetBoothQueryKey(privateToken), enabled: Boolean(privateToken), refetchInterval: (query) => {
     const data = query.state.data as BoothState | undefined;
-    return data && (data.revealAvailable || data.status === 'expired' || data.status === 'deleted') ? false : 7000;
+    return data && (data.revealAvailable || data.status === 'deleted') ? false : 7000;
   } } });
 }
 
@@ -92,10 +96,15 @@ export function HomePage() {
   const { user } = useAuth();
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
   const query = useBooth(activeToken);
-  const booth = query.data && Array.isArray(query.data.slots) ? query.data : undefined;
+  const { entries: archived, selectedIds, ownedTokens } = useArchiveBooths();
+  const accountHero = user ? selectedIds.map((id) => archived.find((entry) => entry.id === id)).find(Boolean) ?? archived[0] : undefined;
+  const localBooth = query.data && Array.isArray(query.data.slots) && (!user || ownedTokens.includes(activeToken)) ? query.data : undefined;
+  const booth = accountHero?.booth ?? localBooth;
+  const boothDestination = accountHero ? accountHero.token ? `/booth/${accountHero.token}/reveal` : `/archive/${accountHero.id}/reveal` : booth?.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`;
   const submitted = booth?.completedCount ?? 0;
   const myBoothsQuery = useGetMyBooths({ query: { queryKey: getGetMyBoothsQueryKey(), enabled: Boolean(user) } });
   const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
+  const featured = selectedIds.flatMap((id) => archived.filter((item) => item.id === id));
   const heroTitle = user ? `Hi, ${user.displayName}!` : booth ? booth.name : 'Welcome to your';
   const heroSubtitle = booth
     ? (booth.revealAvailable ? 'Everyone is here.' : `${submitted} of ${booth.participantCount} moments added`)
@@ -127,26 +136,28 @@ export function HomePage() {
           <img className="collage-sticker collage-sticker-flower" src={stickerFlower} alt="" />
           <img className="collage-sticker collage-sticker-bird" src={stickerBird} alt="" />
           <img className="collage-sticker collage-sticker-confetti" src={stickerConfetti} alt="" />
-          <h1 className="serif collage-heading">{heroTitle}</h1>
+          <h1 className="serif collage-heading">{user ? <>Hi, <span className="text-[#E5786A]">{user.displayName}</span>!</> : heroTitle}</h1>
           {!user && !booth && <p className="serif collage-title">timecapsule!</p>}
           <p className="collage-subtitle">{heroSubtitle}</p>
           <div className="collage-actions">
             {booth
-              ? <><Button onClick={() => navigate(booth.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
+              ? <><Button onClick={() => navigate(boothDestination)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
               : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}
           </div>
+          {(archived.length > 0 || user) && <Link href="/archive" className="mt-3 text-sm font-semibold text-[#c76559] underline underline-offset-4">Browse your photostrips</Link>}
           {!user && !booth && <p className="collage-signin">
             <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
           </p>}
         </div>
         {homeStrips.map(({ layout, frameType }, index) => {
+          const featuredBooth = featured[index]?.booth;
           const stripSlots = booth?.slots.slice(index * 2, index * 2 + 2) ?? [];
           const hasRevealedPhotos = Boolean(booth?.revealAvailable && stripSlots.some((slot) => slot.photoUrl));
           const photos = hasRevealedPhotos
             ? Array.from({ length: 2 }, (_, slotIndex) => stripSlots[slotIndex]?.photoUrl ?? '')
             : sampleStripPhotos[index] ?? ['', ''];
-          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!hasRevealedPhotos}>
-            <FramePreview photos={photos} layout={layout} mode="classic" compact frameType={frameType} />
+          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!featuredBooth && !hasRevealedPhotos}>
+            {featuredBooth ? <FramePreview photos={featuredBooth.slots.map((slot) => slot.photoUrl ?? '')} layout={featuredBooth.customization.layout || featuredBooth.layout} mode={featuredBooth.customization.mode || featuredBooth.mode} caption={featuredBooth.customization.caption} frameColor={featuredBooth.customization.frameColor} filter={featuredBooth.customization.filter} frameType={featuredBooth.customization.frameType} objects={featuredBooth.customization.objects} showDate={false} captionPosition={featuredBooth.customization.captionPosition} captionFont={featuredBooth.customization.captionFont} slotAdjustments={featuredBooth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact /> : <FramePreview photos={photos} layout={layout} mode="classic" compact frameType={frameType} />}
           </div>;
         })}
       </div>
@@ -163,6 +174,59 @@ export function HomePage() {
     </section>
   </Shell>;
 }
+
+export function ArchivePage() {
+  const [, navigate] = useLocation();
+  const reducedMotion = useReducedMotion();
+  const { entries: archived, selectedIds, isLoading, error: archiveError, saveSelection } = useArchiveBooths();
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [selected, setSelected] = useState(selectedIds);
+  const [selectionError, setSelectionError] = useState('');
+  useEffect(() => setSelected(selectedIds), [selectedIds.join('|')]);
+  const touchStart = useRef<number | null>(null);
+  const current = archived[index] ?? archived[0];
+  const move = useCallback((step: number) => {
+    if (archived.length < 2) return;
+    setDirection(step);
+    setIndex((value) => (value + step + archived.length) % archived.length);
+  }, [archived.length]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight') move(1);
+      if (event.key === 'ArrowLeft') move(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [move]);
+  const toggle = async () => {
+    if (!current) return;
+    const next = selected.includes(current.id) ? selected.filter((id) => id !== current.id) : [...selected, current.id].slice(0, 12);
+    setSelected(next);
+    setSelectionError('');
+    try { await saveSelection(next); }
+    catch (reason) { setSelected(selected); setSelectionError(getError(reason)); }
+  };
+  return <Shell><TopBar right={<span className="eyebrow">Photostrip archive</span>} />
+    <div className="mx-auto max-w-[900px] py-7 sm:py-11">
+      <button className="button-quiet mb-6 inline-flex items-center gap-2 !px-0" onClick={() => navigate('/')}><ArrowLeft size={16} /> Home</button>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h1 className="serif text-4xl sm:text-5xl">Your photostrips.</h1><p className="mt-2 text-sm text-[#756f66]">Swipe or use the arrows. Pick the ones to show on your home page.</p></div><span className="text-sm text-[#756f66]">{selected.length} of 12 on home</span></div>
+      {isLoading && !current ? <LoadingCard /> : !current ? <Panel className="py-16 text-center">{archiveError ? <ErrorNote message={getError(archiveError)} /> : <><h2 className="serif text-3xl">The archive is waiting.</h2><p className="text-[#756f66]">Finished photostrips will appear here.</p><Button onClick={() => navigate('/create')}>Start a timecapsule</Button></>}</Panel> : <>
+        <div className="archive-stage" onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { if (touchStart.current === null) return; const distance = event.changedTouches[0].clientX - touchStart.current; if (Math.abs(distance) > 45) move(distance < 0 ? 1 : -1); touchStart.current = null; }}>
+          <button className="archive-arrow" aria-label="Previous photostrip" disabled={archived.length < 2} onClick={() => move(-1)}><ArrowLeft size={22} /></button>
+          <div className="archive-window"><AnimatePresence initial={false} custom={direction} mode="popLayout">
+            <motion.div key={current.id} className="archive-print" custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
+              <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} mode={current.booth.customization.mode || current.booth.mode} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />
+            </motion.div>
+          </AnimatePresence></div>
+          <button className="archive-arrow" aria-label="Next photostrip" disabled={archived.length < 2} onClick={() => move(1)}><ArrowRight size={22} /></button>
+        </div>
+        <div className="mx-auto mt-6 flex max-w-[600px] flex-wrap items-center justify-between gap-4"><div><p className="mb-0 text-xs text-[#756f66]">{index + 1} / {archived.length}</p><h2 className="serif text-2xl">{current.booth.name}</h2></div><div className="flex flex-wrap gap-2"><Button variant={selected.includes(current.id) ? 'primary' : 'secondary'} disabled={!selected.includes(current.id) && selected.length >= 12} onClick={() => void toggle()}>{selected.includes(current.id) ? <><Check size={16} /> On home page</> : selected.length >= 12 ? 'Home page full' : 'Show on home page'}</Button><Button variant="quiet" onClick={() => navigate(current.token ? `/booth/${current.token}/reveal` : `/archive/${current.id}/reveal`)}>Open keepsake</Button></div></div>
+        {selectionError && <div className="mx-auto mt-4 max-w-[600px]"><ErrorNote message={selectionError} /></div>}
+      </>}
+    </div>
+  </Shell>;
+}
 function LockGlyph() { return <span aria-hidden="true" className="inline-grid size-5 place-items-center rounded-full border border-[#d9d1c5] text-[10px]">●</span>; }
 
 export function CreateBoothPage() {
@@ -174,8 +238,9 @@ export function CreateBoothPage() {
   const [subtitle, setSubtitle] = useState('');
   const [occasion, setOccasion] = useState('');
   const [count, setCount] = useState(4);
-  const [names, setNames] = useState(['You', '', '', '']);
+  const [names, setNames] = useState(['', '', '', '']);
   const [mode, setMode] = useState<'classic'|'scrapbook'>('classic');
+  const [frameType, setFrameType] = useState<CustomizationInput['frameType']>('clean');
   const [layout, setLayout] = useState<'vertical'|'horizontal'|'double'|'grid'|'editorial'|'freeform'|'classic-strip'|'polaroid-stack'|'mixed-sizes'>('vertical');
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [photosPerPerson, setPhotosPerPerson] = useState(1);
@@ -184,13 +249,16 @@ export function CreateBoothPage() {
   const [scheduledRevealAt, setScheduledRevealAt] = useState('');
   const setNameAt = (index: number, value: string) => setNames((prev) => prev.map((item, i) => i === index ? value : item));
   const submit = () => {
-    const slots = Array.from({ length: count }, (_, i) => names[i]?.trim() || (i === 0 ? 'You' : `Friend ${i}`));
+    const slots = Array.from({ length: count }, (_, i) => names[i]?.trim() || `Friend ${i + 1}`);
     const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode, layout, prompt, countdownSeconds, photosPerPerson, revealMode, scheduledRevealAt: revealMode === 'scheduled' && scheduledRevealAt ? new Date(scheduledRevealAt).toISOString() : null };
-    createBooth.mutate({ data }, { onSuccess: (created) => {
+    createBooth.mutate({ data }, { onSuccess: async (created) => {
       localStorage.setItem(creatorKey(created.privateToken), created.creatorToken);
+      try {
+        await saveBoothCustomization(created.privateToken, { mode, layout, frameType, frameColor: '#FFFDF8', filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
+      } catch { localStorage.setItem(pendingFrameKey(created.privateToken), frameType); }
       const firstSlot = created.state.slots[0];
       if (firstSlot) {
-        const claimData: SlotClaimInput = { displayName: names[0]?.trim() || 'You', slotId: firstSlot.id };
+        const claimData: SlotClaimInput = { displayName: names[0]?.trim() || 'Friend 1', slotId: firstSlot.id };
         claimSlot.mutate({ privateToken: created.privateToken, data: claimData }, { onSuccess: (result) => {
           localStorage.setItem(participantKey(created.privateToken, result.slotId), result.participantToken);
           navigate(`/join/${created.privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
@@ -214,11 +282,13 @@ export function CreateBoothPage() {
           <label className="field-label" htmlFor="occasion">What are you celebrating?</label><input id="occasion" className="input-paper mb-6" maxLength={40} placeholder="Birthday, just because, reunion…" value={occasion} onChange={(e) => setOccasion(e.target.value)} />
           <span className="field-label">How many people?</span><div className="mb-7 flex gap-3">{[2,3,4,5,6].map((n) => <button key={n} aria-pressed={count === n} onClick={() => { setCount(n); setNames((prev) => Array.from({ length: n }, (_, i) => prev[i] ?? '')); }} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${count === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
           <span className="field-label">Photos per person</span><div className="mb-7 flex gap-3">{[1,2,3,4].map((n) => <button key={n} aria-pressed={photosPerPerson === n} onClick={() => setPhotosPerPerson(n)} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${photosPerPerson === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
-          <span className="field-label">Each person's name</span><div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: count }, (_, i) => <label key={i} className="flex items-center gap-2"><span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold ${['bg-[#ecd1c8]','bg-[#d5e2dc]','bg-[#dbe4f0]','bg-[#f0e2c2]'][i % 4]}`}>{i+1}</span><input className="input-paper !min-h-[46px]" aria-label={`Name for person ${i + 1}`} maxLength={30} placeholder={i ? `Friend ${i}` : 'Your name'} value={names[i] ?? ''} onChange={(e) => setNameAt(i,e.target.value)} /></label>)}</div>
+          <span className="field-label">Each person's name</span><div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: count }, (_, i) => <label key={i} className="flex items-center gap-2"><span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold ${['bg-[#ecd1c8]','bg-[#d5e2dc]','bg-[#dbe4f0]','bg-[#f0e2c2]'][i % 4]}`}>{i+1}</span><input className="input-paper !min-h-[46px]" aria-label={`Name for person ${i + 1}`} maxLength={30} placeholder={i ? `Friend ${i + 1}` : 'Your name'} value={names[i] ?? ''} onChange={(e) => setNameAt(i,e.target.value)} /></label>)}</div>
         </div>}
-        {step === 2 && <div><h1 className="serif text-4xl sm:text-5xl">Choose the feeling.</h1><p className="mb-7 mt-2 text-[#6f685f]">Start with a complete look. Change the details later.</p>
+        {step === 2 && <div><h1 className="serif text-4xl sm:text-5xl">Choose the feeling.</h1><p className="mb-7 mt-2 text-[#6f685f]">Try each frame and layout before you begin.</p>
+          <div className="mb-7 flex justify-center rounded-[24px] bg-[#e9e2d8] p-5"><div className="w-full max-w-[220px]"><FramePreview photos={sampleStripPhotos[0]} mode={mode} layout={layout} frameType={frameType} showDate={false} /></div></div>
           <div className="grid gap-4 sm:grid-cols-2">{(['classic','scrapbook'] as const).map((choice) => <button key={choice} onClick={() => setMode(choice)} aria-pressed={mode === choice} className={`rounded-[20px] border p-4 text-left ${mode === choice ? 'border-[#292723] ring-1 ring-[#292723]' : 'border-[#d9d1c5]'}`}><div className="mb-4 flex items-center justify-between"><strong className="text-sm uppercase tracking-wide">{choice} booth</strong><span className={`size-5 rounded-full border ${mode === choice ? 'border-[#292723] bg-[#292723] shadow-[inset_0_0_0_4px_#fffdf8]' : 'border-[#c6bdae]'}`} /></div><div className={`mx-auto max-w-[170px] ${choice === 'scrapbook' ? 'rounded-xl bg-[#dce8e3] p-3' : 'bg-white p-3 shadow-sm'}`}><FramePreview photos={[]} mode={choice} layout="vertical" compact /></div><p className="mb-0 mt-3 text-sm text-[#6f685f]">{choice === 'classic' ? 'A timeless printed strip, neat and familiar.' : 'Loose paper, playful notes, a little more you.'}</p></button>)}</div>
           <div className="mt-7"><span className="field-label">Arrange the frames</span><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} aria-pressed={layout === key} onClick={() => setLayout(key)} className={`min-h-12 rounded-xl border px-3 text-sm ${layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{label}</button>)}</div></div>
+          <div className="mt-7"><span className="field-label">Choose a frame</span><FrameTypePicker value={frameType} onChange={setFrameType} /></div>
         </div>}
         {step === 3 && <div><h1 className="serif text-4xl sm:text-5xl">Set the moment.</h1><p className="mb-7 mt-2 text-[#6f685f]">A tiny prompt helps everyone feel part of the same picture.</p>
           <label className="field-label" htmlFor="prompt">Today's prompt</label><textarea id="prompt" data-testid="input-prompt" className="input-paper mb-6 min-h-24 resize-y" maxLength={120} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
@@ -229,7 +299,7 @@ export function CreateBoothPage() {
         </div>}
         {createBooth.isError && <div className="mt-5"><ErrorNote message={getError(createBooth.error)} /></div>}
         {claimSlot.isError && <div className="mt-5"><ErrorNote message={getError(claimSlot.error)} /></div>}
-        <div className="mt-8 flex justify-end">{step < 3 ? <Button disabled={step === 1 && name.trim().length < 1} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
+        <div className="mt-8 flex justify-end">{step < 3 ? <Button disabled={step === 1 && (!name.trim() || !names[0]?.trim())} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || !names[0]?.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
       </Panel>
     </div>
   </Shell>;
@@ -245,6 +315,8 @@ export function BoothManagePage() {
   const query = useBooth(privateToken);
   const booth = query.data;
   const creatorToken = localStorage.getItem(creatorKey(privateToken));
+  const personCount = booth ? Math.ceil(booth.slots.length / (booth.photosPerPerson || 1)) : 0;
+  const finalizedPeople = booth ? Array.from({ length: personCount }, (_, index) => booth.slots.slice(index * (booth.photosPerPerson || 1), (index + 1) * (booth.photosPerPerson || 1))).filter((group) => group.every((slot) => slot.claimStatus === 'submitted')).length : 0;
   const deleteBooth = useDeleteBooth({ request: { headers: { 'X-Creator-Token': creatorToken ?? '' } } });
   const inviteUrl = `${location.origin}/join/${privateToken}`;
   const deleteIt = () => {
@@ -260,8 +332,8 @@ export function BoothManagePage() {
     <button onClick={() => navigate('/')} className="button-quiet mb-6 inline-flex items-center gap-2 !px-0"><ArrowLeft size={16} /> Home</button>
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
       <div className="mb-7"><p className="eyebrow">A little place for your people</p><h1 className="serif mt-2 text-5xl sm:text-6xl">{booth.name}</h1>{booth.subtitle && <p className="mt-2 text-[#6f685f]">{booth.subtitle}</p>}</div>
-      {booth.revealAvailable ? <div className="mb-7 rounded-2xl border border-[#c2d9cf] bg-[#e6f0eb] p-5"><strong className="serif text-2xl">Everyone’s here. Your booth is ready.</strong><p className="mt-1 text-sm text-[#586d63]">The frames are together at last.</p><Button className="mt-4" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open the photobooth <ArrowRight size={17} /></Button></div> : <div className="mb-7"><h2 className="serif text-3xl">{booth.completedCount === 0 ? 'The first frame is still to come.' : `${booth.participantCount - booth.completedCount} ${booth.participantCount - booth.completedCount === 1 ? 'frame' : 'frames'} left to come in.`}</h2><p className="mt-1 text-[#6f685f]">Photos stay tucked away until everyone is in.</p>{booth.scheduledRevealAt && <p className="mt-2 text-sm text-[#756f66]">The chosen reveal time is {new Date(booth.scheduledRevealAt).toLocaleString()}.</p>}</div>}
-      <Panel><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><span className="eyebrow">The little roll call</span><p className="mb-0 mt-1 font-semibold">{booth.completedCount} of {booth.participantCount} frames confirmed</p></div><ProgressDots total={booth.participantCount} complete={booth.completedCount} /></div><SlotList slots={booth.slots} hidePhotos={!booth.revealAvailable} /><div className="mt-6 flex flex-wrap gap-3"><CopyButton text={inviteUrl}><Link2 size={16} /> Copy invitation link</CopyButton><Button variant="secondary" onClick={() => { const text = `A photobooth for us: ${inviteUrl}`; if (navigator.share) void navigator.share({ title: booth.name, text, url: inviteUrl }); else void navigator.clipboard.writeText(text); }}><Share2 size={16} /> Share invite</Button><Button variant="quiet" onClick={() => navigate(`/booth/${privateToken}/notifications`)}>Gentle reminders</Button></div></Panel>
+      {booth.revealAvailable ? <div className="mb-7 rounded-2xl border border-[#c2d9cf] bg-[#e6f0eb] p-5"><strong className="serif text-2xl">Everyone’s here. Your booth is ready.</strong><p className="mt-1 text-sm text-[#586d63]">The frames are together at last.</p><Button className="mt-4" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open the photobooth <ArrowRight size={17} /></Button></div> : <div className="mb-7"><h2 className="serif text-3xl">{finalizedPeople === 0 ? 'The first person is still to come.' : `${personCount - finalizedPeople} ${personCount - finalizedPeople === 1 ? 'person' : 'people'} left to finalize.`}</h2><p className="mt-1 text-[#6f685f]">Photos stay tucked away until everyone is in.</p>{booth.scheduledRevealAt && <p className="mt-2 text-sm text-[#756f66]">The chosen reveal time is {new Date(booth.scheduledRevealAt).toLocaleString()}.</p>}</div>}
+      <Panel><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><span className="eyebrow">The little roll call</span><p className="mb-0 mt-1 font-semibold">{finalizedPeople} of {personCount} people finalized</p></div><ProgressDots total={personCount} complete={finalizedPeople} noun="people" /></div><SlotList slots={booth.slots} photosPerPerson={booth.photosPerPerson} /><div className="mt-6 flex flex-wrap gap-3"><CopyButton text={inviteUrl}><Link2 size={16} /> Copy invitation link</CopyButton><Button variant="secondary" onClick={() => { const text = `A photobooth for us: ${inviteUrl}`; if (navigator.share) void navigator.share({ title: booth.name, text, url: inviteUrl }); else void navigator.clipboard.writeText(text); }}><Share2 size={16} /> Share invite</Button><Button variant="quiet" onClick={() => navigate(`/booth/${privateToken}/notifications`)}>Gentle reminders</Button></div></Panel>
       {!creatorToken && <p className="mt-4 rounded-xl bg-[#f2e5d8] p-4 text-sm text-[#6f5147]">Creator controls are available on the device where this booth was created.</p>}
       <div className="mt-4 flex flex-wrap gap-2">{booth.revealAvailable && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize keepsake</Button>}<Button variant="quiet" disabled={!creatorToken || deleteBooth.isPending} onClick={deleteIt}><Trash2 size={16} /> Delete booth</Button></div>
       {deleteBooth.isError && <div className="mt-4"><ErrorNote message={getError(deleteBooth.error)} /></div>}
@@ -338,13 +410,18 @@ export function CapturePage() {
     const groupStart = Math.floor(selected.position / groupSize) * groupSize;
     return boothQuery.data.slots.filter((s) => s.position >= groupStart && s.position < groupStart + groupSize);
   }, [boothQuery.data, slotId]);
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const nextPhotoIndex = mySlots.findIndex((s) => s.claimStatus !== 'submitted');
-  const currentPhotoIndex = nextPhotoIndex >= 0 ? nextPhotoIndex : photoIndex;
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  const [showTrayOverview, setShowTrayOverview] = useState(false);
+  const [savedUrls, setSavedUrls] = useState<Record<string, string>>({});
+  const nextPhotoIndex = mySlots.findIndex((s) => s.claimStatus === 'claimed');
+  const currentPhotoIndex = reviewIndex ?? (nextPhotoIndex >= 0 ? nextPhotoIndex : 0);
   const currentSlotId = mySlots[currentPhotoIndex]?.id ?? slotId;
   const slot = boothQuery.data?.slots.find((s) => s.id === currentSlotId);
   const totalPhotos = mySlots.length || 1;
   const allMySlotsSubmitted = mySlots.length > 0 && mySlots.every((s) => s.claimStatus === 'submitted');
+  const allMySlotsSaved = mySlots.length > 0 && mySlots.every((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted');
+  const savedCount = mySlots.filter((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted').length;
+  const privatePhotoIds = mySlots.filter((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted').map((s) => s.id).join(',');
   const requestUpload = useRequestFrameUpload({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const confirmFrame = useConfirmBoothFrame({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const queryClient = useQueryClient();
@@ -358,8 +435,28 @@ export function CapturePage() {
   const [source, setSource] = useState<'camera'|'upload'>('camera');
   const [mirror, setMirror] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [flash, setFlash] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [error, setError] = useState('');
   const confirmedRef = useRef(false);
+  useEffect(() => {
+    if (!privatePhotoIds || !participantToken) { setSavedUrls({}); return; }
+    const controller = new AbortController();
+    const urls: Record<string, string> = {};
+    void Promise.all(privatePhotoIds.split(',').map(async (id) => {
+      const response = await fetch(`/api/booths/${privateToken}/slots/${id}/draft-photo`, {
+        headers: { 'X-Participant-Token': participantToken }, signal: controller.signal,
+      });
+      if (!response.ok) throw new Error('A saved photo could not be loaded.');
+      const blob = await response.blob();
+      if (!controller.signal.aborted) urls[id] = URL.createObjectURL(blob);
+    })).then(() => { if (!controller.signal.aborted) setSavedUrls(urls); }).catch(() => {
+      if (!controller.signal.aborted) setError('A saved photo could not be loaded. Try refreshing this page.');
+    });
+    return () => { controller.abort(); Object.values(urls).forEach((url) => URL.revokeObjectURL(url)); };
+  }, [privatePhotoIds, participantToken, privateToken]);
   const cameraStart = useCallback(async () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (!navigator.mediaDevices?.getUserMedia) { setStreamError('Camera access is unavailable here. You can choose a photo instead.'); return; }
@@ -370,11 +467,12 @@ export function CapturePage() {
       setStreamError('');
     } catch { setStreamError('Camera permission was not available. Choose a photo from your device instead.'); }
   }, [facing]);
+  const cameraActive = Boolean(participantToken && slotId && boothQuery.data && !allMySlotsSaved && !preview && reviewIndex === null && !showTrayOverview);
   useEffect(() => {
-    if (!participantToken || !slotId || allMySlotsSubmitted) return;
+    if (!cameraActive) return;
     void cameraStart();
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
-  }, [cameraStart, participantToken, slotId, allMySlotsSubmitted]);
+  }, [cameraStart, cameraActive]);
   useEffect(() => () => { if (preview && !confirmedRef.current) URL.revokeObjectURL(preview); }, [preview]);
   const capture = () => {
     if (countdown !== null) return;
@@ -386,6 +484,8 @@ export function CapturePage() {
         window.clearInterval(timer);
         const video = videoRef.current;
         if (!video || video.readyState < 2) { setCountdown(null); setStreamError('Camera is still warming up. Try again or pick a photo.'); return; }
+        setFlash(true);
+        window.setTimeout(() => setFlash(false), 500);
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
@@ -409,6 +509,7 @@ export function CapturePage() {
   const confirm = async () => {
     if (!candidate || !currentSlotId || !participantToken) return;
     setError('');
+    setIsSaving(true);
     try {
       const data: FrameUploadInput = { name: candidate.name.slice(0,180), size: candidate.size, contentType: candidate.type as FrameUploadInput['contentType'] };
       const destination = await requestUpload.mutateAsync({ privateToken, slotId: currentSlotId, data });
@@ -422,16 +523,17 @@ export function CapturePage() {
       });
       const confirmData: FrameConfirmInput = { objectPath: destination.objectPath, ...dimensions, captureSource: source };
       const confirmedState = await confirmFrame.mutateAsync({ privateToken, slotId: currentSlotId, data: confirmData });
-      localStorage.setItem(confirmedKey(privateToken, currentSlotId), 'true');
       queryClient.setQueryData(getGetBoothQueryKey(privateToken), confirmedState);
       void queryClient.invalidateQueries({ queryKey: getGetBoothQueryKey(privateToken) });
-      // Continue with the next unsubmitted slot in this participant's group.
-      if (currentPhotoIndex < totalPhotos - 1) {
+      if (totalPhotos > 1) {
         if (preview) URL.revokeObjectURL(preview);
         setPreview(''); setCandidate(null); setError('');
-        setPhotoIndex(currentPhotoIndex + 1);
+        setReviewIndex(null);
+        setShowTrayOverview(false);
+        setIsSaving(false);
         return;
       }
+      localStorage.setItem(confirmedKey(privateToken, currentSlotId), 'true');
       confirmedRef.current = true;
       const isCreator = Boolean(localStorage.getItem(creatorKey(privateToken)));
       if (isCreator && preview) {
@@ -440,48 +542,92 @@ export function CapturePage() {
       } else {
         navigate(`/booth/${privateToken}/notifications?confirmed=1`);
       }
+    } catch (reason) { setError(getError(reason)); setIsSaving(false); }
+  };
+  const removeSaved = async (index: number, retakeNow: boolean) => {
+    const savedSlot = mySlots[index];
+    if (!savedSlot || savedSlot.claimStatus !== 'staged') return;
+    setError(''); setIsRemoving(true);
+    try {
+      const response = await fetch(`/api/booths/${privateToken}/slots/${savedSlot.id}/draft-photo`, {
+        method: 'DELETE', headers: { 'X-Participant-Token': participantToken },
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || 'The photo could not be removed.');
+      await queryClient.invalidateQueries({ queryKey: getGetBoothQueryKey(privateToken) });
+      setReviewIndex(null);
+      setShowTrayOverview(!retakeNow);
     } catch (reason) { setError(getError(reason)); }
+    finally { setIsRemoving(false); }
+  };
+  const finalizePhotos = async () => {
+    if (!allMySlotsSaved || !slotId) return;
+    setError(''); setIsFinalizing(true);
+    try {
+      const response = await fetch(`/api/booths/${privateToken}/slots/${slotId}/finalize`, {
+        method: 'POST', headers: { 'X-Participant-Token': participantToken },
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || 'Your photos could not be finalized.');
+      const state = await response.json() as BoothState;
+      queryClient.setQueryData(getGetBoothQueryKey(privateToken), state);
+      localStorage.setItem(confirmedKey(privateToken, slotId), 'true');
+      if (state.revealAvailable) navigate(`/booth/${privateToken}/reveal`);
+      else setIsFinalizing(false);
+    } catch (reason) { setError(getError(reason)); setIsFinalizing(false); }
   };
   if (!slotId || !token) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
   if (boothQuery.isLoading) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
-  if (allMySlotsSubmitted) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel className="text-center"><h1 className="serif text-3xl">Your photos are in.</h1><p className="text-[#6f685f]">They’ll join the keepsake when everyone is ready.</p><Button onClick={() => navigate(localStorage.getItem(creatorKey(privateToken)) ? `/booth/${privateToken}/style` : `/booth/${privateToken}`)}>{localStorage.getItem(creatorKey(privateToken)) ? 'Style your booth' : 'View booth'}</Button></Panel></div></Shell>;
-  const photoBusy = requestUpload.isPending || confirmFrame.isPending;
-  return <main className="min-h-[100dvh] bg-[#292723] px-4 pb-10 text-[#fffdf8]">
-    <header className="mx-auto flex min-h-[66px] max-w-[720px] items-center justify-between"><a href={`/join/${privateToken}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-[#ded7ce] no-underline"><ArrowLeft size={17} /> Invitation</a><span className="eyebrow text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`}</span></header>
-    {!preview ? <div className="mx-auto max-w-[600px]">
+  if (allMySlotsSubmitted && !isSaving) return <Shell><TopBar /><div className="mx-auto max-w-[720px] py-10"><Panel className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-7 w-[min(100%,360px)]"><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="vertical" mode="classic" frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-7 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></Panel></div></Shell>;
+  const photoBusy = isSaving || isRemoving || isFinalizing;
+  return <main className={`min-h-[100dvh] bg-[#292723] px-4 text-[#fffdf8] ${totalPhotos > 1 ? 'pb-[220px]' : 'pb-10'}`}>
+    <header className="mx-auto flex min-h-[66px] max-w-[720px] items-center justify-between"><a href={`/join/${privateToken}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-[#ded7ce] no-underline"><ArrowLeft size={17} /> Invitation</a><span className="eyebrow text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && (allMySlotsSaved && reviewIndex === null ? ' · Ready to finish' : ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`)}</span></header>
+    {reviewIndex !== null && mySlots[reviewIndex]?.claimStatus === 'staged' ? <div className="mx-auto max-w-[600px]">
+      <div className="mb-5 text-center"><p className="eyebrow text-[#e8a99c]">Saved photo {reviewIndex + 1} of {totalPhotos}</p><h1 className="serif mb-1 mt-2 text-4xl">Keep this moment?</h1><p className="mb-0 text-sm text-[#d1c9be]">Only you can see it while you finish your photos.</p></div>
+      <div className="relative mx-auto aspect-[4/5] max-h-[42dvh] overflow-hidden rounded-[26px] bg-[#47433d] sm:max-h-[58dvh]">{savedUrls[mySlots[reviewIndex].id] ? <img src={savedUrls[mySlots[reviewIndex].id]} alt={`Saved photo ${reviewIndex + 1}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><LoaderCircle className="animate-spin" /></div>}</div>
+      <div className="mx-auto mt-5 flex max-w-[520px] flex-wrap justify-center gap-3"><Button variant="secondary" onClick={() => { setReviewIndex(null); setShowTrayOverview(true); }} disabled={photoBusy}>Back to photos</Button><Button variant="secondary" onClick={() => void removeSaved(reviewIndex, true)} disabled={photoBusy}>{isRemoving ? <LoaderCircle className="animate-spin" /> : <Camera size={17} />} Retake</Button><Button variant="quiet" className="!text-[#f2bdb0]" onClick={() => void removeSaved(reviewIndex, false)} disabled={photoBusy}><Trash2 size={17} /> Delete</Button></div>
+      {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
+    </div> : (allMySlotsSaved || showTrayOverview) && !preview ? <div className="mx-auto max-w-[600px] py-5 text-center">
+      <p className="eyebrow text-[#e8a99c]">Your little camera roll</p><h1 className="serif mt-2 text-4xl">{allMySlotsSaved ? 'All your photos are saved.' : 'Your photos so far.'}</h1><p className="mx-auto mt-3 max-w-md text-sm text-[#d1c9be]">Tap a photo below to revisit it. {allMySlotsSaved ? 'When they feel right, finish your set.' : 'Add the missing photos when you’re ready.'}</p>
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">{mySlots.map((item, index) => <button key={item.id} type="button" className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/20 bg-[#47433d]" onClick={() => { if (item.claimStatus === 'staged') { setReviewIndex(index); setShowTrayOverview(false); } else if (item.claimStatus === 'claimed') setShowTrayOverview(false); }} disabled={photoBusy}><span className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-1 text-xs">{index + 1}</span>{savedUrls[item.id] ? <img src={savedUrls[item.id]} alt={`Saved photo ${index + 1}`} className="h-full w-full object-cover transition-transform group-hover:scale-105" /> : <span className="grid h-full place-items-center text-sm text-[#d1c9be]">{item.claimStatus === 'claimed' ? 'Add photo' : item.claimStatus === 'submitted' ? 'Finalized' : 'Loading…'}</span>}</button>)}</div>
+      {allMySlotsSaved ? <Button className="mt-8 w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] hover:bg-[#d96b5d]" disabled={photoBusy} onClick={() => void finalizePhotos()}>{isFinalizing ? <><LoaderCircle className="animate-spin" /> Finalizing…</> : <>Finish my photos <Check size={17} /></>}</Button> : <Button className="mt-8" onClick={() => setShowTrayOverview(false)}>Take the next photo <Camera size={17} /></Button>}
+      {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
+    </div> : !preview ? <div className="mx-auto max-w-[600px]">
       <div className="mb-4 text-center"><h1 className="serif mb-1 text-4xl">Find your frame.</h1><p className="mb-0 text-sm text-[#d1c9be]">{boothQuery.data?.prompt || defaultPrompt}</p></div>
-      <div className="camera-stage relative mx-auto aspect-[4/5] max-h-[68dvh] overflow-hidden rounded-[28px] border border-[#59554f] bg-[#3d3a35]">
+      <div className={`camera-stage relative mx-auto aspect-[4/5] overflow-hidden rounded-[28px] border border-[#59554f] bg-[#3d3a35] ${totalPhotos > 1 ? 'max-h-[40dvh] sm:max-h-[68dvh]' : 'max-h-[68dvh]'}`}>
         <video ref={videoRef} autoPlay muted playsInline className={`h-full w-full object-cover ${mirror ? 'scale-x-[-1]' : ''}`} />
         <div className="pointer-events-none absolute inset-[7%] rounded-[22px] border border-dashed border-white/70" />
         <div className="absolute left-1/2 top-4 max-w-[90%] -translate-x-1/2 rounded-full bg-black/50 px-4 py-2 text-center text-xs">{boothQuery.data?.prompt || defaultPrompt}</div>
         {countdown !== null && <div className="absolute inset-0 grid place-items-center bg-black/20"><span className="serif text-[8rem] leading-none text-white drop-shadow-lg">{countdown}</span></div>}
+        {flash && <div className="camera-flash pointer-events-none absolute inset-0 bg-white" aria-hidden="true" />}
         {streamError && <div className="absolute inset-x-4 bottom-4 rounded-xl bg-black/70 p-3 text-center text-sm">{streamError}</div>}
       </div>
       <div className="mt-5 flex items-center justify-center gap-8"><button aria-label="Choose photo from device" className="grid size-12 place-items-center rounded-full bg-white/10" onClick={() => fileRef.current?.click()}><Image size={19} /></button><button aria-label="Take photo" className="grid size-[76px] place-items-center rounded-full border-[5px] border-white bg-transparent" onClick={capture} disabled={countdown !== null}><span className="size-[54px] rounded-full bg-white" /></button><button aria-label="Switch camera" className="grid size-12 place-items-center rounded-full bg-white/10" onClick={() => setFacing((value) => value === 'user' ? 'environment' : 'user')}><Camera size={19} /></button></div>
       <div className="mt-4 flex flex-wrap justify-center gap-3"><Button variant="quiet" className="!text-[#d1c9be]" onClick={() => setMirror((v) => !v)}>Mirror: {mirror ? 'on' : 'off'}</Button><Button variant="quiet" className="!text-[#d1c9be]" onClick={() => fileRef.current?.click()}>Choose a photo</Button></div>
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => chooseFile(e.target.files?.[0])} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => { chooseFile(e.target.files?.[0]); e.target.value = ''; }} />
       {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
-      <p className="mt-4 text-center text-xs text-[#bdb6ad]">Your photo isn’t uploaded until you confirm it.</p>
+      <p className="mt-4 text-center text-xs text-[#bdb6ad]">{totalPhotos > 1 ? 'Each photo goes to your private camera roll when you save it.' : 'Your photo isn’t uploaded until you confirm it.'}</p>
     </div> : <div className="mx-auto max-w-[600px]"><h1 className="serif mb-1 text-center text-4xl">Keep this one?</h1><p className="mb-5 text-center text-sm text-[#d1c9be]">Nothing is shared until you confirm.</p>
-      <div className="relative mx-auto aspect-[4/5] max-h-[66dvh] overflow-hidden rounded-[26px] bg-[#47433d]"><img src={preview} alt="Your photo preview" className="h-full w-full object-cover" style={{ transform: mirror && source === 'camera' ? 'scaleX(-1)' : undefined }} /></div>
+      <div className={`relative mx-auto aspect-[4/5] overflow-hidden rounded-[26px] bg-[#47433d] ${totalPhotos > 1 ? 'max-h-[40dvh] sm:max-h-[66dvh]' : 'max-h-[66dvh]'}`}><img src={preview} alt="Your photo preview" className="h-full w-full object-cover" style={{ transform: mirror && source === 'camera' ? 'scaleX(-1)' : undefined }} /></div>
       <div className="mx-auto mt-5 flex max-w-[460px] gap-3"><Button variant="secondary" className="flex-1" onClick={retake} disabled={photoBusy}>Retake</Button><Button variant="secondary" className="flex-1" onClick={() => setMirror((v) => !v)}>Mirror: {mirror ? 'on' : 'off'}</Button></div>
       {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
-      <div className="sticky bottom-0 left-0 right-0 flex flex-col items-center bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6">
-        <Button className="w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] shadow-lg shadow-[#E5786A]/30 hover:bg-[#d96b5d]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>Use this photo <Check size={17} /></>}</Button>
-        <p className="mt-2 text-center text-xs text-[#bdb6ad]">Visible only after every frame is confirmed.</p>
+      <div className={`left-0 right-0 flex flex-col items-center bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6 ${totalPhotos > 1 ? 'sticky bottom-[184px]' : 'sticky bottom-0'}`}>
+        <Button className="w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] shadow-lg shadow-[#E5786A]/30 hover:bg-[#d96b5d]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>{totalPhotos > 1 ? 'Save to my photos' : 'Use this photo'} <Check size={17} /></>}</Button>
+        <p className="mt-2 text-center text-xs text-[#bdb6ad]">{totalPhotos > 1 ? 'You can review or retake it before finishing your set.' : 'Visible only after every frame is confirmed.'}</p>
       </div>
     </div>}
+    {totalPhotos > 1 && <section className="fixed inset-x-3 bottom-3 z-30 mx-auto max-w-[600px] rounded-[24px] border border-white/20 bg-[#383530]/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur-md" aria-label="Saved photos"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="eyebrow mb-1 text-[#e8a99c]">Camera roll</p><p className="m-0 text-xs text-[#d1c9be]">{savedCount} of {totalPhotos} saved · tap to review</p></div>{savedCount > 0 && !allMySlotsSaved && <button type="button" className="text-xs text-[#e8a99c] underline underline-offset-4" onClick={() => { if (preview) retake(); setShowTrayOverview(true); }}>View all</button>}</div><div className="flex gap-3 overflow-x-auto pb-1">{mySlots.map((item, index) => <button key={item.id} type="button" aria-label={item.claimStatus === 'staged' ? `Review saved photo ${index + 1}` : item.claimStatus === 'submitted' ? `Photo ${index + 1} finalized` : `Take photo ${index + 1}`} aria-pressed={reviewIndex === index} className={`relative aspect-[4/5] w-[60px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#47433d] sm:w-[76px] ${reviewIndex === index ? 'border-[#E5786A]' : 'border-white/25'}`} disabled={photoBusy || item.claimStatus === 'submitted'} onClick={() => { if (preview) retake(); setError(''); if (item.claimStatus === 'staged') { setReviewIndex(index); setShowTrayOverview(false); } else { setReviewIndex(null); setShowTrayOverview(false); } }}><span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px]">{index + 1}</span>{savedUrls[item.id] ? <img src={savedUrls[item.id]} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[11px] text-[#d1c9be]">{item.claimStatus === 'claimed' ? '+' : item.claimStatus === 'submitted' ? '✓' : '…'}</span>}</button>)}</div></section>}
   </main>;
 }
 
 export function RevealPage() {
-  const { privateToken = '' } = useParams<{privateToken:string}>();
+  const { privateToken = '', boothId = '' } = useParams<{privateToken:string;boothId:string}>();
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const query = useBooth(privateToken);
+  const { entries: archived, isLoading: archiveLoading, error: archiveError } = useArchiveBooths();
   const [skip, setSkip] = useState(false);
   const [replay, setReplay] = useState(0);
   const [shareMessage, setShareMessage] = useState('');
-  const booth = query.data;
+  const booth = query.data ?? archived.find((entry) => entry.id === boothId)?.booth;
   const photos = useMemo(() => booth?.slots.map((slot) => slot.photoUrl).filter((url): url is string => Boolean(url)) ?? [], [booth?.slots]);
   const exportArtifact = async () => {
     if (!booth) return;
@@ -557,14 +703,15 @@ export function RevealPage() {
     }
     canvas.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${booth.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-photobooth.png`; link.click(); URL.revokeObjectURL(url); },'image/png');
   };
-  if (query.isLoading || !booth) return <Shell dark><TopBar dark /><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
+  if (boothId && !user) return <Shell><TopBar /><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate('/login')}>Sign in</Button></Panel></div></Shell>;
+  if ((privateToken ? query.isLoading : archiveLoading) || !booth) return <Shell dark><TopBar dark /><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={privateToken ? query.error : archiveError} retry={() => privateToken ? void query.refetch() : navigate('/archive')} /></div></Shell>;
   if (!booth.revealAvailable) return <Shell><TopBar /><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos are kept private until every frame is confirmed and the reveal time arrives.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
   return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-10 text-[#fffdf8]">
-    <header className="mx-auto flex min-h-[68px] max-w-[840px] items-center justify-between"><span className="font-semibold">timecapsule</span><button className="button-quiet !text-[#cfc8be]" onClick={() => setSkip(true)}>{skip ? 'Ready' : 'Skip reveal'}</button></header>
+    <header className="mx-auto flex min-h-[68px] max-w-[840px] items-center justify-between"><button className="inline-flex min-h-11 items-center gap-2 text-sm text-[#fffdf8]" onClick={() => navigate('/')}><ArrowLeft size={17} /> Home</button><button className="button-quiet !text-[#cfc8be]" onClick={() => setSkip(true)}>{skip ? 'Ready' : 'Skip reveal'}</button></header>
     <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-2 text-4xl sm:text-5xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-2 text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
       {!skip && <div className="reveal-machine-slot" />}
       <div className="keepsake-preview mx-auto mt-7 w-[min(100%,480px)] overflow-hidden rounded-[18px]"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} mode={booth.customization.mode || booth.mode} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
-      <div className={`mt-7 flex flex-wrap justify-center gap-3 ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button></div>
+      <div className={`mt-7 flex flex-wrap justify-center gap-3 ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}</div>
       {shareMessage && <p className="mt-3 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}<p className={`mt-5 text-sm text-[#cfc8be] ${skip ? '' : 'reveal-copy'}`}>Different places. One photobooth.</p>
     </div>
   </main>;
@@ -711,7 +858,7 @@ export function CreatorStylePage() {
 
   useEffect(() => {
     if (booth) {
-      setFrameType(booth.customization?.frameType ?? 'clean');
+      setFrameType((localStorage.getItem(pendingFrameKey(privateToken)) as CustomizationInput['frameType'] | null) ?? booth.customization?.frameType ?? 'clean');
       setFrameColor(booth.customization?.frameColor ?? '#FFFDF8');
       setFilter(booth.customization?.filter ?? 'original');
     }
@@ -745,6 +892,7 @@ export function CreatorStylePage() {
       const saved = await save.mutateAsync({ privateToken, data });
       queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
       sessionStorage.removeItem(previewKey(privateToken));
+      localStorage.removeItem(pendingFrameKey(privateToken));
       navigate(`/booth/${privateToken}`);
     } catch { /* Error shown via save.isError */ }
   };

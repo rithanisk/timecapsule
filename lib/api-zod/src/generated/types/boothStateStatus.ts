@@ -13,6 +13,5 @@ export const BoothStateStatus = {
   collecting: 'collecting',
   complete: 'complete',
   revealed: 'revealed',
-  expired: 'expired',
   deleted: 'deleted',
 } as const;
