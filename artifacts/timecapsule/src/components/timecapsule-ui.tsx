@@ -1,8 +1,8 @@
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Hourglass, Image, Link2, LoaderCircle, LogOut, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Hourglass, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
+import { frameAssetUrl, frameOverlayFilter, getFrameLayout, photoIndexForSlot } from '@/lib/frame-layouts';
 
 export function Brand({ light = false }: { light?: boolean }) {
   return <Link href="/" className={`brand ${light ? 'text-[#fffdf8]' : 'text-[#292723]'} inline-flex items-center gap-2 no-underline`} data-testid="link-home">
@@ -36,18 +36,8 @@ function MobileNav() {
 }
 
 export function TopBar({ right, dark = false }: { right?: ReactNode; dark?: boolean }) {
-  const { user, logout } = useAuth();
-  const defaultRight = user
-    ? <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}>
-        Hi, {user.displayName}!
-        <button type="button" onClick={() => void logout()} className="ml-1 inline-flex items-center gap-1 underline hover:opacity-70"><LogOut size={13} /> Sign out</button>
-      </span>
-    : <span className={`flex items-center gap-2 text-xs ${dark ? 'text-[#cfc8be]' : 'text-[#756f66]'}`}>
-        <Link href="/login" className={`font-medium underline ${dark ? 'text-[#fffdf8]' : 'text-[#292723]'}`}>Sign in</Link>
-      </span>;
-  return <header className="flex min-h-[76px] items-center justify-between border-b border-[#d9d1c5] dark:border-[#514d46]">
-    <Brand light={dark} />{right ?? defaultRight}
-  </header>;
+  void right; void dark;
+  return null;
 }
 
 export function Button({ children, variant = 'primary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'quiet' }) {
@@ -74,38 +64,37 @@ export function ProgressDots({ total, complete, noun = 'frames' }: { total: numb
   </div>;
 }
 
-export function FramePreview({ photos, layout, mode, caption, frameColor = '#fffdf8', compact = false, filter = 'original', frameType = 'clean', objects = [], showDate = true, captionPosition = 'bottom', captionFont = 'serif', slotAdjustments = [], renderCell, stickerImageMap = {} }: {
-  photos: string[]; layout: string; mode?: string; caption?: string; frameColor?: string; compact?: boolean; filter?: string; frameType?: string;
+export function FramePreview({ photos, layout, people, photosPerPerson, caption, frameColor = '#fffdf8', compact = false, filter = 'original', frameType = 'clean', objects = [], showDate = true, captionPosition = 'bottom', captionFont = 'serif', slotAdjustments = [], renderCell, stickerImageMap = {} }: {
+  photos: string[]; layout: string; people?: number; photosPerPerson?: number; mode?: string; caption?: string; frameColor?: string; compact?: boolean; filter?: string; frameType?: string;
   objects?: Array<{ id: string; kind: string; label: string; x: number; y: number; rotation: number; color: string; zIndex: number }>;
   showDate?: boolean; captionPosition?: string; captionFont?: string;
   slotAdjustments?: Array<{ slotIndex: number; panX: number; panY: number; scale: number }>;
   renderCell?: (photo: string, index: number) => React.ReactNode;
   stickerImageMap?: Record<string, string>;
 }) {
-  const isStrip = layout === 'vertical' || layout === 'classic-strip';
-  const cols = layout === 'polaroid-stack' ? '' : layout === 'horizontal' ? 'grid-cols-2' : layout === 'double' ? 'grid-cols-2' : layout === 'grid' || layout === 'freeform' ? 'grid-cols-2' : layout === 'mixed-sizes' ? 'grid-cols-2' : 'grid-cols-1';
-  const displayPhotos = photos.length ? photos : Array.from({ length: 4 }, () => '');
+  const perPerson = photosPerPerson ?? 1;
+  const frame = getFrameLayout(layout, people ?? Math.max(1, Math.ceil(photos.length / perPerson)), perPerson);
+  const asset = frameAssetUrl(frame);
   const fontClass = captionFont === 'handwritten' ? 'font-handwritten' : captionFont === 'sans' ? 'font-sans' : '';
-  const captionEl = caption ? <p className={`photostrip-caption ${fontClass}`}>{caption}</p> : null;
-  return <div className={`photostrip relative ${mode === 'scrapbook' ? 'scrapbook' : ''} ${compact ? 'photostrip-compact' : ''} ${isStrip ? 'layout-strip' : ''} frame-${frameType || 'clean'}`} style={{ backgroundColor: mode === 'scrapbook' ? '#dce8e3' : frameColor }}>
-    {captionPosition === 'top' && captionEl}
-    <div className={`photo-grid ${cols} ${layout} filter-${filter || 'original'}`} data-testid="artifact-preview">
-      {displayPhotos.map((photo, i) => {
-        if (renderCell) return renderCell(photo, i);
+  const captionEl = caption ? <p className={`frame-caption ${captionPosition === 'top' ? 'is-top' : ''} ${fontClass}`}>{caption}</p> : null;
+  return <div className={`frame-composition ${compact ? 'is-compact' : ''} frame-treatment-${frameType || 'clean'}`} style={{ aspectRatio: `${frame.width} / ${frame.height}`, backgroundColor: frameColor }} data-testid="artifact-preview">
+    {frame.slots.map((slot) => {
+        const i = photoIndexForSlot(slot, perPerson);
+        const photo = photos[i] ?? '';
         const adj = slotAdjustments?.find((a) => a.slotIndex === i);
         const cellStyle: React.CSSProperties = photo ? {
           backgroundImage: `url("${photo}")`,
           ...(adj ? { backgroundPosition: `${50 - adj.panX * 50}% ${50 - adj.panY * 50}%`, backgroundSize: `${(adj.scale ?? 1) * 100}%` } : {}),
         } : {};
-        return <div key={i} className={`photo-cell tone-${i % 4}`} style={cellStyle}>
-          {!photo && <div className="silhouette" aria-label={`Frame ${i + 1} waiting`}><span /></div>}
+        return <div key={`${slot.person}-${slot.photo}`} className={`frame-slot filter-${filter || 'original'}`} style={{ left: `${slot.x / frame.width * 100}%`, top: `${slot.y / frame.height * 100}%`, width: `${slot.w / frame.width * 100}%`, height: `${slot.h / frame.height * 100}%`, transform: `rotate(${slot.rotation}deg)`, zIndex: slot.z }}>
+          {renderCell ? renderCell(photo, i) : <div className={`photo-cell tone-${i % 4}`} style={cellStyle}>{!photo && <div className="silhouette" aria-label={`Frame ${i + 1} waiting`}><span /></div>}</div>}
         </div>;
       })}
-    </div>
-    {captionPosition !== 'top' && captionEl}
-    {objects.map((object) => <span key={object.id} className={`artifact-object artifact-object-${object.kind}`} style={{ left: `${object.x * 100}%`, top: `${object.y * 100}%`, zIndex: object.zIndex, color: object.color, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)` }}>{object.kind === 'sticker' && stickerImageMap?.[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-8 object-contain sm:size-12" /> : object.label}</span>)}
-    {showDate && !compact && <small className="photostrip-date">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</small>}
-{/* mark removed */}
+    <img className="frame-overlay" src={asset} alt="" draggable={false} style={{ filter: frameOverlayFilter(frameType) }} />
+    {(['solid', 'pattern', 'seasonal'].includes(frameType) || (frameType === 'clean' && frameColor.toLowerCase() !== '#fffdf8')) && <span className="frame-color-overlay" style={{ backgroundColor: frameColor, maskImage: `url("${asset}")`, WebkitMaskImage: `url("${asset}")` }} />}
+    {captionEl}
+    {objects.map((object) => <span key={object.id} className={`artifact-object artifact-object-${object.kind}`} style={{ left: `${object.x * 100}%`, top: `${object.y * 100}%`, zIndex: 110 + object.zIndex, color: object.color, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)` }}>{object.kind === 'sticker' && stickerImageMap?.[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-8 object-contain sm:size-12" /> : object.label}</span>)}
+    {showDate && !compact && <small className="frame-date">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</small>}
   </div>;
 }
 

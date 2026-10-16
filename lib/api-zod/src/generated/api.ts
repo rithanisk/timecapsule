@@ -26,18 +26,16 @@ export const createBoothBodySubtitleMax = 80;
 
 export const createBoothBodyOccasionMax = 40;
 
-export const createBoothBodyParticipantCountMin = 2;
 export const createBoothBodyParticipantCountMax = 6;
 
 export const createBoothBodySlotsItemMax = 30;
 
-export const createBoothBodySlotsMin = 2;
 export const createBoothBodySlotsMax = 6;
 
 export const createBoothBodyPromptMax = 120;
 
 export const createBoothBodyPhotosPerPersonDefault = 1;
-export const createBoothBodyPhotosPerPersonMax = 4;
+export const createBoothBodyPhotosPerPersonMax = 5;
 
 
 
@@ -45,8 +43,8 @@ export const CreateBoothBody = zod.object({
   "name": zod.string().min(1).max(createBoothBodyNameMax),
   "subtitle": zod.string().max(createBoothBodySubtitleMax).optional(),
   "occasion": zod.string().max(createBoothBodyOccasionMax).optional(),
-  "participantCount": zod.number().int().min(createBoothBodyParticipantCountMin).max(createBoothBodyParticipantCountMax),
-  "slots": zod.array(zod.string().max(createBoothBodySlotsItemMax)).min(createBoothBodySlotsMin).max(createBoothBodySlotsMax),
+  "participantCount": zod.number().int().min(1).max(createBoothBodyParticipantCountMax),
+  "slots": zod.array(zod.string().max(createBoothBodySlotsItemMax)).min(1).max(createBoothBodySlotsMax),
   "mode": zod.enum(['classic', 'scrapbook']),
   "layout": zod.enum(['vertical', 'horizontal', 'double', 'grid', 'editorial', 'freeform', 'classic-strip', 'polaroid-stack', 'mixed-sizes']),
   "prompt": zod.string().max(createBoothBodyPromptMax),
@@ -57,7 +55,7 @@ export const CreateBoothBody = zod.object({
 })
 
 export const createBoothResponseStatePhotosPerPersonDefault = 1;
-export const createBoothResponseStatePhotosPerPersonMax = 4;
+export const createBoothResponseStatePhotosPerPersonMax = 5;
 
 export const createBoothResponseStateCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const createBoothResponseStateCustomizationCaptionMax = 120;
@@ -164,7 +162,7 @@ export const GetBoothParams = zod.object({
 })
 
 export const getBoothResponsePhotosPerPersonDefault = 1;
-export const getBoothResponsePhotosPerPersonMax = 4;
+export const getBoothResponsePhotosPerPersonMax = 5;
 
 export const getBoothResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const getBoothResponseCustomizationCaptionMax = 120;
@@ -376,7 +374,7 @@ export const ConfirmBoothFrameBody = zod.object({
 })
 
 export const confirmBoothFrameResponsePhotosPerPersonDefault = 1;
-export const confirmBoothFrameResponsePhotosPerPersonMax = 4;
+export const confirmBoothFrameResponsePhotosPerPersonMax = 5;
 
 export const confirmBoothFrameResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const confirmBoothFrameResponseCustomizationCaptionMax = 120;
@@ -534,7 +532,7 @@ export const FinalizeParticipantPhotosHeader = zod.object({
 })
 
 export const finalizeParticipantPhotosResponsePhotosPerPersonDefault = 1;
-export const finalizeParticipantPhotosResponsePhotosPerPersonMax = 4;
+export const finalizeParticipantPhotosResponsePhotosPerPersonMax = 5;
 
 export const finalizeParticipantPhotosResponseCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const finalizeParticipantPhotosResponseCustomizationCaptionMax = 120;
@@ -921,7 +919,7 @@ export const LinkParticipationToAccountResponse = zod.object({
  * @summary List revealed photostrips owned by the signed-in account
  */
 export const getAccountArchiveResponseEntriesItemBoothPhotosPerPersonDefault = 1;
-export const getAccountArchiveResponseEntriesItemBoothPhotosPerPersonMax = 4;
+export const getAccountArchiveResponseEntriesItemBoothPhotosPerPersonMax = 5;
 
 export const getAccountArchiveResponseEntriesItemBoothCustomizationFrameColorRegExp = new RegExp('^#[0-9a-fA-F]{6}$');
 export const getAccountArchiveResponseEntriesItemBoothCustomizationCaptionMax = 120;

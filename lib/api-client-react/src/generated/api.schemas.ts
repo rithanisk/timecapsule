@@ -60,12 +60,12 @@ export interface BoothInput {
   /** @maxLength 40 */
   occasion?: string;
   /**
-     * @minimum 2
+     * @minimum 1
      * @maximum 6
      */
   participantCount: number;
   /**
-     * @minItems 2
+     * @minItems 1
      * @maxItems 6
      * @items.maxLength 30
      */
@@ -77,7 +77,7 @@ export interface BoothInput {
   countdownSeconds: BoothInputCountdownSeconds;
   /**
      * @minimum 1
-     * @maximum 4
+     * @maximum 5
      */
   photosPerPerson?: number;
   revealMode: BoothInputRevealMode;
@@ -307,7 +307,7 @@ export interface BoothState {
   countdownSeconds: number;
   /**
      * @minimum 1
-     * @maximum 4
+     * @maximum 5
      */
   photosPerPerson?: number;
   revealMode: BoothStateRevealMode;

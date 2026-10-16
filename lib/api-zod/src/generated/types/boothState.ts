@@ -23,7 +23,7 @@ export interface BoothState {
   countdownSeconds: number;
   /**
      * @minimum 1
-     * @maximum 4
+     * @maximum 5
      */
   photosPerPerson?: number;
   revealMode: BoothStateRevealMode;

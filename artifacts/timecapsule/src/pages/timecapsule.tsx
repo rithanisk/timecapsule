@@ -17,6 +17,7 @@ import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, Progre
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
 import { sampleStripPhotos } from '@/home-samples';
 import { useArchiveBooths } from '@/lib/archive';
+import { frameAssetUrl, frameOverlayFilter, getFrameLayout, photoIndexForSlot } from '@/lib/frame-layouts';
 
 // SVG asset stickers
 import stickerCherry from '@assets/cherry-svgrepo-com.svg';
@@ -53,10 +54,14 @@ const assetStickers: Array<{ src: string; label: string }> = [
 const stickerImageMap: Record<string, string> = Object.fromEntries(assetStickers.map((s) => [s.label, s.src]));
 
 const layouts = [
-  ['vertical', 'Photo strip'], ['horizontal', 'Side by side'], ['double', 'Double frame'],
-  ['grid', 'Four-square'], ['editorial', 'Editorial'], ['freeform', 'Freeform'],
-  ['classic-strip', 'Classic strip'], ['polaroid-stack', 'Polaroid stack'], ['mixed-sizes', 'Mixed sizes'],
+  ['classic-strip', 'Photostrip'], ['horizontal', 'Side by side'], ['grid', 'Collage'],
+  ['editorial', 'Editorial'], ['polaroid-stack', 'Polaroid'], ['freeform', 'Freeform'], ['mixed-sizes', 'Mixed sizes'],
 ] as const;
+const fittedFrameWidth = (layout: string, people: number, perPerson: number | undefined, height: string) => {
+  const frame = getFrameLayout(layout, people, perPerson);
+  const limits = height.startsWith('min(') ? height.slice(4, -1).split(',').map((limit) => limit.trim()) : [height];
+  return `min(100%, ${limits.map((limit) => `calc(${limit} * ${frame.width / frame.height})`).join(', ')})`;
+};
 const defaultPrompt = 'Look toward the next person.';
 const creatorKey = (token: string) => `tc-creator:${token}`;
 const participantKey = (token: string, slotId: string) => `tc-participant:${token}:${slotId}`;
@@ -93,7 +98,7 @@ function getError(error: unknown) {
 
 export function HomePage() {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
   const query = useBooth(activeToken);
   const { entries: archived, selectedIds, ownedTokens } = useArchiveBooths();
@@ -148,6 +153,7 @@ export function HomePage() {
           {!user && !booth && <p className="collage-signin">
             <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
           </p>}
+          {user && <button className="button-quiet mt-2 text-xs underline" onClick={() => void logout()}>Sign out</button>}
         </div>
         {homeStrips.map(({ layout, frameType }, index) => {
           const featuredBooth = featured[index]?.booth;
@@ -157,7 +163,7 @@ export function HomePage() {
             ? Array.from({ length: 2 }, (_, slotIndex) => stripSlots[slotIndex]?.photoUrl ?? '')
             : sampleStripPhotos[index] ?? ['', ''];
           return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!featuredBooth && !hasRevealedPhotos}>
-            {featuredBooth ? <FramePreview photos={featuredBooth.slots.map((slot) => slot.photoUrl ?? '')} layout={featuredBooth.customization.layout || featuredBooth.layout} mode={featuredBooth.customization.mode || featuredBooth.mode} caption={featuredBooth.customization.caption} frameColor={featuredBooth.customization.frameColor} filter={featuredBooth.customization.filter} frameType={featuredBooth.customization.frameType} objects={featuredBooth.customization.objects} showDate={false} captionPosition={featuredBooth.customization.captionPosition} captionFont={featuredBooth.customization.captionFont} slotAdjustments={featuredBooth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact /> : <FramePreview photos={photos} layout={layout} mode="classic" compact frameType={frameType} />}
+            {featuredBooth ? <FramePreview photos={featuredBooth.slots.map((slot) => slot.photoUrl ?? '')} layout={featuredBooth.customization.layout || featuredBooth.layout} people={featuredBooth.participantCount} photosPerPerson={featuredBooth.photosPerPerson} caption={featuredBooth.customization.caption} frameColor={featuredBooth.customization.frameColor} filter={featuredBooth.customization.filter} frameType={featuredBooth.customization.frameType} objects={featuredBooth.customization.objects} showDate={false} captionPosition={featuredBooth.customization.captionPosition} captionFont={featuredBooth.customization.captionFont} slotAdjustments={featuredBooth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact /> : <FramePreview photos={photos} layout={layout} compact frameType={frameType} people={1} photosPerPerson={2} />}
           </div>;
         })}
       </div>
@@ -210,18 +216,19 @@ export function ArchivePage() {
   return <Shell><TopBar right={<span className="eyebrow">Photostrip archive</span>} />
     <div className="mx-auto max-w-[900px] py-7 sm:py-11">
       <button className="button-quiet mb-6 inline-flex items-center gap-2 !px-0" onClick={() => navigate('/')}><ArrowLeft size={16} /> Home</button>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h1 className="serif text-4xl sm:text-5xl">Your photostrips.</h1><p className="mt-2 text-sm text-[#756f66]">Swipe or use the arrows. Pick the ones to show on your home page.</p></div><span className="text-sm text-[#756f66]">{selected.length} of 12 on home</span></div>
+      <div className="mb-5 text-center"><h1 className="serif text-4xl sm:text-5xl">Your photostrips.</h1><p className="mt-2 text-sm text-[#756f66]">Swipe or use the arrows. Heart the ones to show on your home page.</p><span className="text-sm text-[#756f66]">{selected.length} of 12 on home</span></div>
       {isLoading && !current ? <LoadingCard /> : !current ? <Panel className="py-16 text-center">{archiveError ? <ErrorNote message={getError(archiveError)} /> : <><h2 className="serif text-3xl">The archive is waiting.</h2><p className="text-[#756f66]">Finished photostrips will appear here.</p><Button onClick={() => navigate('/create')}>Start a timecapsule</Button></>}</Panel> : <>
+        <div className="mb-3 text-center"><p className="mb-0 text-sm text-[#756f66]">{index + 1} / {archived.length}</p><h2 className="serif mt-1 text-2xl">{current.booth.name}</h2></div>
         <div className="archive-stage" onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { if (touchStart.current === null) return; const distance = event.changedTouches[0].clientX - touchStart.current; if (Math.abs(distance) > 45) move(distance < 0 ? 1 : -1); touchStart.current = null; }}>
           <button className="archive-arrow" aria-label="Previous photostrip" disabled={archived.length < 2} onClick={() => move(-1)}><ArrowLeft size={22} /></button>
           <div className="archive-window"><AnimatePresence initial={false} custom={direction} mode="popLayout">
-            <motion.div key={current.id} className="archive-print" custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
-              <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} mode={current.booth.customization.mode || current.booth.mode} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />
+            <motion.div key={current.id} className="archive-print" style={{ width: fittedFrameWidth(current.booth.customization.layout || current.booth.layout, current.booth.participantCount, current.booth.photosPerPerson, 'min(45dvh, 560px)') }} custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
+              <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} people={current.booth.participantCount} photosPerPerson={current.booth.photosPerPerson} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />
             </motion.div>
           </AnimatePresence></div>
           <button className="archive-arrow" aria-label="Next photostrip" disabled={archived.length < 2} onClick={() => move(1)}><ArrowRight size={22} /></button>
         </div>
-        <div className="mx-auto mt-6 flex max-w-[600px] flex-wrap items-center justify-between gap-4"><div><p className="mb-0 text-xs text-[#756f66]">{index + 1} / {archived.length}</p><h2 className="serif text-2xl">{current.booth.name}</h2></div><div className="flex flex-wrap gap-2"><Button variant={selected.includes(current.id) ? 'primary' : 'secondary'} disabled={!selected.includes(current.id) && selected.length >= 12} onClick={() => void toggle()}>{selected.includes(current.id) ? <><Check size={16} /> On home page</> : selected.length >= 12 ? 'Home page full' : 'Show on home page'}</Button><Button variant="quiet" onClick={() => navigate(current.token ? `/booth/${current.token}/reveal` : `/archive/${current.id}/reveal`)}>Open keepsake</Button></div></div>
+        <div className="mx-auto mt-4 flex max-w-[600px] items-center justify-center gap-5"><button type="button" className={`archive-heart ${selected.includes(current.id) ? 'is-liked' : ''}`} aria-label={selected.includes(current.id) ? 'Remove from home page' : 'Show on home page'} aria-pressed={selected.includes(current.id)} title={selected.includes(current.id) ? 'Remove from home page' : 'Show on home page'} disabled={!selected.includes(current.id) && selected.length >= 12} onClick={() => void toggle()}><Heart size={29} fill={selected.includes(current.id) ? 'currentColor' : 'none'} strokeWidth={1.8} /></button><Button variant="quiet" onClick={() => navigate(current.token ? `/booth/${current.token}/reveal` : `/archive/${current.id}/reveal`)}>Open keepsake</Button></div>
         {selectionError && <div className="mx-auto mt-4 max-w-[600px]"><ErrorNote message={selectionError} /></div>}
       </>}
     </div>
@@ -239,9 +246,8 @@ export function CreateBoothPage() {
   const [occasion, setOccasion] = useState('');
   const [count, setCount] = useState(4);
   const [names, setNames] = useState(['', '', '', '']);
-  const [mode, setMode] = useState<'classic'|'scrapbook'>('classic');
   const [frameType, setFrameType] = useState<CustomizationInput['frameType']>('clean');
-  const [layout, setLayout] = useState<'vertical'|'horizontal'|'double'|'grid'|'editorial'|'freeform'|'classic-strip'|'polaroid-stack'|'mixed-sizes'>('vertical');
+  const [layout, setLayout] = useState<(typeof layouts)[number][0]>('classic-strip');
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [photosPerPerson, setPhotosPerPerson] = useState(1);
   const [countdownSeconds, setCountdownSeconds] = useState<3|5|10>(5);
@@ -250,11 +256,11 @@ export function CreateBoothPage() {
   const setNameAt = (index: number, value: string) => setNames((prev) => prev.map((item, i) => i === index ? value : item));
   const submit = () => {
     const slots = Array.from({ length: count }, (_, i) => names[i]?.trim() || `Friend ${i + 1}`);
-    const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode, layout, prompt, countdownSeconds, photosPerPerson, revealMode, scheduledRevealAt: revealMode === 'scheduled' && scheduledRevealAt ? new Date(scheduledRevealAt).toISOString() : null };
+    const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode: 'classic', layout, prompt, countdownSeconds, photosPerPerson, revealMode, scheduledRevealAt: revealMode === 'scheduled' && scheduledRevealAt ? new Date(scheduledRevealAt).toISOString() : null };
     createBooth.mutate({ data }, { onSuccess: async (created) => {
       localStorage.setItem(creatorKey(created.privateToken), created.creatorToken);
       try {
-        await saveBoothCustomization(created.privateToken, { mode, layout, frameType, frameColor: '#FFFDF8', filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
+        await saveBoothCustomization(created.privateToken, { mode: 'classic', layout, frameType, frameColor: '#FFFDF8', filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
       } catch { localStorage.setItem(pendingFrameKey(created.privateToken), frameType); }
       const firstSlot = created.state.slots[0];
       if (firstSlot) {
@@ -280,13 +286,12 @@ export function CreateBoothPage() {
           <label className="field-label" htmlFor="booth-name">Booth name</label><input id="booth-name" data-testid="input-booth-name" className="input-paper mb-5" maxLength={50} placeholder="Four time zones, still us" value={name} onChange={(e) => setName(e.target.value)} />
           <label className="field-label" htmlFor="booth-subtitle">A little note (optional)</label><input id="booth-subtitle" className="input-paper mb-5" maxLength={80} placeholder="For the people who feel like home" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
           <label className="field-label" htmlFor="occasion">What are you celebrating?</label><input id="occasion" className="input-paper mb-6" maxLength={40} placeholder="Birthday, just because, reunion…" value={occasion} onChange={(e) => setOccasion(e.target.value)} />
-          <span className="field-label">How many people?</span><div className="mb-7 flex gap-3">{[2,3,4,5,6].map((n) => <button key={n} aria-pressed={count === n} onClick={() => { setCount(n); setNames((prev) => Array.from({ length: n }, (_, i) => prev[i] ?? '')); }} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${count === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
-          <span className="field-label">Photos per person</span><div className="mb-7 flex gap-3">{[1,2,3,4].map((n) => <button key={n} aria-pressed={photosPerPerson === n} onClick={() => setPhotosPerPerson(n)} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${photosPerPerson === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
+          <span className="field-label">How many people?</span><div className="mb-7 flex gap-3">{[1,2,3,4,5,6].map((n) => <button key={n} aria-pressed={count === n} onClick={() => { setCount(n); setNames((prev) => Array.from({ length: n }, (_, i) => prev[i] ?? '')); }} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${count === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
+          <span className="field-label">Photos per person</span><div className="mb-7 flex gap-3">{[1,2,3,4,5].map((n) => <button key={n} aria-pressed={photosPerPerson === n} onClick={() => setPhotosPerPerson(n)} className={`grid size-12 min-h-11 min-w-11 place-items-center rounded-full border font-semibold ${photosPerPerson === n ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{n}</button>)}</div>
           <span className="field-label">Each person's name</span><div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: count }, (_, i) => <label key={i} className="flex items-center gap-2"><span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold ${['bg-[#ecd1c8]','bg-[#d5e2dc]','bg-[#dbe4f0]','bg-[#f0e2c2]'][i % 4]}`}>{i+1}</span><input className="input-paper !min-h-[46px]" aria-label={`Name for person ${i + 1}`} maxLength={30} placeholder={i ? `Friend ${i + 1}` : 'Your name'} value={names[i] ?? ''} onChange={(e) => setNameAt(i,e.target.value)} /></label>)}</div>
         </div>}
         {step === 2 && <div><h1 className="serif text-4xl sm:text-5xl">Choose the feeling.</h1><p className="mb-7 mt-2 text-[#6f685f]">Try each frame and layout before you begin.</p>
-          <div className="mb-7 flex justify-center rounded-[24px] bg-[#e9e2d8] p-5"><div className="w-full max-w-[220px]"><FramePreview photos={sampleStripPhotos[0]} mode={mode} layout={layout} frameType={frameType} showDate={false} /></div></div>
-          <div className="grid gap-4 sm:grid-cols-2">{(['classic','scrapbook'] as const).map((choice) => <button key={choice} onClick={() => setMode(choice)} aria-pressed={mode === choice} className={`rounded-[20px] border p-4 text-left ${mode === choice ? 'border-[#292723] ring-1 ring-[#292723]' : 'border-[#d9d1c5]'}`}><div className="mb-4 flex items-center justify-between"><strong className="text-sm uppercase tracking-wide">{choice} booth</strong><span className={`size-5 rounded-full border ${mode === choice ? 'border-[#292723] bg-[#292723] shadow-[inset_0_0_0_4px_#fffdf8]' : 'border-[#c6bdae]'}`} /></div><div className={`mx-auto max-w-[170px] ${choice === 'scrapbook' ? 'rounded-xl bg-[#dce8e3] p-3' : 'bg-white p-3 shadow-sm'}`}><FramePreview photos={[]} mode={choice} layout="vertical" compact /></div><p className="mb-0 mt-3 text-sm text-[#6f685f]">{choice === 'classic' ? 'A timeless printed strip, neat and familiar.' : 'Loose paper, playful notes, a little more you.'}</p></button>)}</div>
+          <div className="mb-7 flex justify-center p-2"><div style={{ width: fittedFrameWidth(layout, count, photosPerPerson, '320px') }}><FramePreview photos={Array.from({ length: count * photosPerPerson }, (_, index) => sampleStripPhotos[index % sampleStripPhotos.length]?.[index % 2] ?? '')} people={count} photosPerPerson={photosPerPerson} layout={layout} frameType={frameType} showDate={false} /></div></div>
           <div className="mt-7"><span className="field-label">Arrange the frames</span><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} aria-pressed={layout === key} onClick={() => setLayout(key)} className={`min-h-12 rounded-xl border px-3 text-sm ${layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{label}</button>)}</div></div>
           <div className="mt-7"><span className="field-label">Choose a frame</span><FrameTypePicker value={frameType} onChange={setFrameType} /></div>
         </div>}
@@ -576,7 +581,7 @@ export function CapturePage() {
   };
   if (!slotId || !token) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
   if (boothQuery.isLoading) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
-  if (allMySlotsSubmitted && !isSaving) return <Shell><TopBar /><div className="mx-auto max-w-[720px] py-10"><Panel className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-7 w-[min(100%,360px)]"><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="vertical" mode="classic" frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-7 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></Panel></div></Shell>;
+  if (allMySlotsSubmitted && !isSaving) return <Shell><TopBar /><div className="mx-auto max-w-[720px] py-10"><Panel className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-7" style={{ width: fittedFrameWidth('classic-strip', 1, mySlots.length, '48dvh') }}><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="classic-strip" people={1} photosPerPerson={mySlots.length} frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-7 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></Panel></div></Shell>;
   const photoBusy = isSaving || isRemoving || isFinalizing;
   return <main className={`min-h-[100dvh] bg-[#292723] px-4 text-[#fffdf8] ${totalPhotos > 1 ? 'pb-[220px]' : 'pb-10'}`}>
     <header className="mx-auto flex min-h-[66px] max-w-[720px] items-center justify-between"><a href={`/join/${privateToken}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-[#ded7ce] no-underline"><ArrowLeft size={17} /> Invitation</a><span className="eyebrow text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && (allMySlotsSaved && reviewIndex === null ? ' · Ready to finish' : ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`)}</span></header>
@@ -633,64 +638,83 @@ export function RevealPage() {
     if (!booth) return;
     const canvas = document.createElement('canvas');
     const layout = booth.customization.layout || booth.layout;
-    const n = booth.slots.length; const gap = 24; const pad = 55;
-    const twoColumns = ['horizontal','double','grid','freeform','polaroid-stack','mixed-sizes'].includes(layout);
-    const columns = twoColumns ? 2 : 1;
-    const rows = layout === 'double' ? 1 + Math.ceil((n - 1) / 2) : Math.ceil(n / columns);
-    const cellH = Math.max(360, (1710-pad*2-gap*(rows-1))/rows);
-    const topCaption = booth.customization.captionPosition === 'top';
-    const contentTop = topCaption ? 150 : pad;
-    canvas.width = 1000;
-    canvas.height = Math.max(1900, contentTop + rows * cellH + (rows - 1) * gap + 190);
+    const frame = getFrameLayout(layout, booth.participantCount, booth.photosPerPerson);
+    canvas.width = frame.width;
+    canvas.height = frame.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const frameType = booth.customization.frameType;
-    ctx.fillStyle = frameType === 'black' || frameType === 'film' ? '#292723' : frameType === 'film-noir' ? '#000000' : booth.customization.frameColor || '#fffdf8';
+    ctx.fillStyle = booth.customization.frameColor || '#fffdf8';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     const filterByName: Record<string,string> = { 'soft-bw':'grayscale(.78) contrast(.96)', 'high-contrast':'contrast(1.18) saturate(.8)', 'warm-film':'sepia(.26) saturate(1.08)', 'cool-flash':'saturate(.82) hue-rotate(8deg) brightness(1.04)', faded:'saturate(.62) brightness(1.08) contrast(.9)', disposable:'saturate(1.16) contrast(1.08)', sepia:'sepia(.68) saturate(.82)', grain:'contrast(1.07) saturate(.9)', original:'none' };
-    const inset = frameType === 'film' ? 70 : frameType === 'polaroid' ? 70 : pad;
-    const exportCellW = (1000-inset*2-gap*(columns-1))/columns;
-    const exportCellH = cellH;
-    for (let i=0;i<n;i++) {
-      const slot = booth.slots[i];
-      const isWideHero = layout === 'double' && i === 0;
-      const itemIndex = layout === 'double' && i > 0 ? i - 1 : i;
-      const x = isWideHero ? pad : inset+(itemIndex%columns)*(exportCellW+gap)+(layout === 'freeform' && i%2 ? 24 : 0);
-      const y = isWideHero ? contentTop : contentTop+(layout === 'double' ? 1+Math.floor(itemIndex/columns) : Math.floor(itemIndex/columns))*(exportCellH+gap)+(layout === 'freeform' && i%2 ? 15 : 0);
-      const itemW = isWideHero ? 890 : exportCellW;
-      const itemH = isWideHero ? exportCellH : exportCellH;
-      ctx.fillStyle = ['#9fb9c7','#e6c4b5','#c6d9b8','#b8c8e6'][i%4]; ctx.fillRect(x,y,itemW,itemH);
-      if (slot.photoUrl) {
-        try {
-          const image = new window.Image(); image.crossOrigin = 'anonymous';
-          await new Promise<void>((resolve) => {
-            image.onload = () => {
-              ctx.filter = filterByName[booth.customization.filter] || 'none';
-              const adj = booth.customization.slotAdjustments?.find((a: { slotIndex: number }) => a.slotIndex === i);
-              const scale = adj?.scale ?? 1;
-              const baseCropW = Math.min(image.naturalWidth, image.naturalHeight * itemW / itemH);
-              const baseCropH = Math.min(image.naturalHeight, image.naturalWidth * itemH / itemW);
-              const cropW = baseCropW / scale;
-              const cropH = baseCropH / scale;
-              const sourceX = Math.max(0, Math.min(image.naturalWidth - cropW, (image.naturalWidth - cropW) / 2 - (adj?.panX ?? 0) * (image.naturalWidth - cropW) / 2));
-              const sourceY = Math.max(0, Math.min(image.naturalHeight - cropH, (image.naturalHeight - cropH) / 2 - (adj?.panY ?? 0) * (image.naturalHeight - cropH) / 2));
-              ctx.drawImage(image, sourceX, sourceY, cropW, cropH, x, y, itemW, itemH);
-              ctx.filter = 'none'; resolve();
-            };
-            image.onerror = () => resolve();
-            image.src = slot.photoUrl!;
-          });
-        } catch { /* Keep the paper placeholder if image export is blocked. */ }
+    const loadImage = (src: string) => new Promise<HTMLImageElement | null>((resolve) => {
+      const image = new window.Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = src;
+    });
+    for (const slot of [...frame.slots].sort((a, b) => a.z - b.z)) {
+      const i = photoIndexForSlot(slot, booth.photosPerPerson);
+      const photo = booth.slots[i]?.photoUrl;
+      const image = photo ? await loadImage(photo) : null;
+      ctx.save();
+      ctx.translate(slot.cx, slot.cy);
+      ctx.rotate(slot.rotation * Math.PI / 180);
+      ctx.beginPath();
+      ctx.rect(-slot.w / 2, -slot.h / 2, slot.w, slot.h);
+      ctx.clip();
+      ctx.fillStyle = ['#9fb9c7','#e6c4b5','#c6d9b8','#b8c8e6'][i % 4];
+      ctx.fillRect(-slot.w / 2, -slot.h / 2, slot.w, slot.h);
+      if (image) {
+        const adj = booth.customization.slotAdjustments?.find((a: { slotIndex: number }) => a.slotIndex === i);
+        const scale = adj?.scale ?? 1;
+        const baseCropW = Math.min(image.naturalWidth, image.naturalHeight * slot.w / slot.h);
+        const baseCropH = Math.min(image.naturalHeight, image.naturalWidth * slot.h / slot.w);
+        const cropW = baseCropW / scale;
+        const cropH = baseCropH / scale;
+        const sourceX = Math.max(0, Math.min(image.naturalWidth - cropW, (image.naturalWidth - cropW) / 2 - (adj?.panX ?? 0) * (image.naturalWidth - cropW) / 2));
+        const sourceY = Math.max(0, Math.min(image.naturalHeight - cropH, (image.naturalHeight - cropH) / 2 - (adj?.panY ?? 0) * (image.naturalHeight - cropH) / 2));
+        ctx.filter = filterByName[booth.customization.filter] || 'none';
+        ctx.drawImage(image, sourceX, sourceY, cropW, cropH, -slot.w / 2, -slot.h / 2, slot.w, slot.h);
+      }
+      ctx.restore();
+    }
+    const overlay = await loadImage(frameAssetUrl(frame));
+    if (overlay) {
+      ctx.save();
+      ctx.filter = frameOverlayFilter(booth.customization.frameType) || 'none';
+      ctx.drawImage(overlay, 0, 0, frame.width, frame.height);
+      ctx.restore();
+      const treatment = booth.customization.frameType;
+      if (['solid', 'pattern', 'seasonal'].includes(treatment) || (treatment === 'clean' && booth.customization.frameColor.toLowerCase() !== '#fffdf8')) {
+        const tintCanvas = document.createElement('canvas');
+        tintCanvas.width = frame.width; tintCanvas.height = frame.height;
+        const tint = tintCanvas.getContext('2d');
+        if (tint) {
+          if (treatment === 'seasonal') {
+            for (let x = 15; x < frame.width; x += 45) for (let y = 20; y < frame.height; y += 45) { tint.fillStyle = (x + y) % 2 ? '#d36d63' : '#6c9b81'; tint.beginPath(); tint.arc(x, y, 2.5, 0, Math.PI * 2); tint.fill(); }
+            tint.globalCompositeOperation = 'destination-in'; tint.drawImage(overlay, 0, 0, frame.width, frame.height);
+          } else {
+            tint.drawImage(overlay, 0, 0, frame.width, frame.height);
+            tint.globalCompositeOperation = 'source-in';
+            tint.fillStyle = treatment === 'pattern' ? 'rgba(255,253,248,.25)' : booth.customization.frameColor;
+            tint.fillRect(0, 0, frame.width, frame.height);
+            if (treatment === 'pattern') { tint.strokeStyle = 'rgba(229,120,106,.2)'; tint.lineWidth = 7; for (let x = -frame.height; x < frame.width + frame.height; x += 17) { tint.beginPath(); tint.moveTo(x, 0); tint.lineTo(x + frame.height, frame.height); tint.stroke(); } }
+          }
+          ctx.save();
+          if (treatment === 'clean') { ctx.globalAlpha = .65; ctx.globalCompositeOperation = 'multiply'; }
+          ctx.drawImage(tintCanvas, 0, 0);
+          ctx.restore();
+        }
       }
     }
-    ctx.fillStyle = frameType === 'black' || frameType === 'film' || frameType === 'film-noir' ? '#fffdf8' : '#292723';
+    ctx.fillStyle = ['black', 'film', 'film-noir'].includes(booth.customization.frameType) ? '#fffdf8' : '#292723';
     ctx.textAlign = 'center';
-    ctx.font = booth.customization.captionFont === 'handwritten' ? '64px Caveat' : booth.customization.captionFont === 'sans' ? '48px Inter' : 'italic 56px Georgia';
-    ctx.fillText(booth.customization.caption || booth.name, 500, topCaption ? 105 : canvas.height - 70, 890);
-    if (booth.customization.showDate) { ctx.font = '22px sans-serif'; ctx.fillText(new Date().toLocaleDateString(),500,canvas.height - 38); }
-    ctx.font = '18px sans-serif'; ctx.fillText('timecapsule',500,canvas.height - 10);
+    ctx.font = booth.customization.captionFont === 'handwritten' ? '42px Caveat' : booth.customization.captionFont === 'sans' ? '32px Inter' : 'italic 38px Georgia';
+    if (booth.customization.caption) ctx.fillText(booth.customization.caption, frame.width / 2, booth.customization.captionPosition === 'top' ? 55 : frame.height - 55, frame.width * .82);
+    if (booth.customization.showDate) { ctx.font = '18px sans-serif'; ctx.fillText(new Date().toLocaleDateString(), frame.width / 2, frame.height - 18); }
     for (const object of booth.customization.objects) {
-      ctx.save(); ctx.translate(object.x*1000, object.y*canvas.height); ctx.rotate(object.rotation*Math.PI/180);
+      ctx.save(); ctx.translate(object.x*frame.width, object.y*frame.height); ctx.rotate(object.rotation*Math.PI/180);
       const stickerSource = object.kind === 'sticker' ? stickerImageMap[object.label] : undefined;
       if (stickerSource) {
         const sticker = new window.Image();
@@ -710,8 +734,8 @@ export function RevealPage() {
     <header className="mx-auto flex min-h-[68px] max-w-[840px] items-center justify-between"><button className="inline-flex min-h-11 items-center gap-2 text-sm text-[#fffdf8]" onClick={() => navigate('/')}><ArrowLeft size={17} /> Home</button><button className="button-quiet !text-[#cfc8be]" onClick={() => setSkip(true)}>{skip ? 'Ready' : 'Skip reveal'}</button></header>
     <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-2 text-4xl sm:text-5xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-2 text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
       {!skip && <div className="reveal-machine-slot" />}
-      <div className="keepsake-preview mx-auto mt-7 w-[min(100%,480px)] overflow-hidden rounded-[18px]"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} mode={booth.customization.mode || booth.mode} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
-      <div className={`mt-7 flex flex-wrap justify-center gap-3 ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}</div>
+      <div className="keepsake-preview mx-auto mt-5" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(50dvh, 550px)') }}><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
+      <div className={`mx-auto mt-5 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-3 text-center ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}</div>
       {shareMessage && <p className="mt-3 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}<p className={`mt-5 text-sm text-[#cfc8be] ${skip ? '' : 'reveal-copy'}`}>Different places. One photobooth.</p>
     </div>
   </main>;
@@ -809,18 +833,18 @@ export function EditorPage() {
   const colors = custom.frameColor;
   const undo = () => { const previous = history.at(-1); if (!previous) return; setRedoHistory((v) => [...v,custom]); setCustom(previous); setHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
   const redo = () => { const next = redoHistory.at(-1); if (!next) return; setHistory((v) => [...v,custom]); setCustom(next); setRedoHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
-  return <Shell><TopBar right={<div className="flex items-center gap-2"><button aria-label="Undo" className="button-quiet" disabled={!history.length} onClick={undo}>Undo</button><button aria-label="Redo" className="button-quiet" disabled={!redoHistory.length} onClick={redo}>Redo</button><Button disabled={!creatorToken || save.isPending} onClick={() => void saveAndExit()}>{save.isPending ? 'Saving…' : dirty ? 'Save & done' : 'Done'}</Button></div>} />
-    <div className="mx-auto max-w-[1100px] py-6"><div className="mb-5"><p className="eyebrow">A keepsake, made yours</p><h1 className="serif mt-1 text-4xl">Customize the reveal</h1></div>
+  return <Shell>
+    <div className="mx-auto max-w-[1100px] py-6"><div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">A keepsake, made yours</p><h1 className="serif mt-1 text-4xl">Customize the reveal</h1></div><div className="flex items-center gap-2"><button aria-label="Undo" className="button-quiet" disabled={!history.length} onClick={undo}>Undo</button><button aria-label="Redo" className="button-quiet" disabled={!redoHistory.length} onClick={redo}>Redo</button><Button disabled={!creatorToken || save.isPending} onClick={() => void saveAndExit()}>{save.isPending ? 'Saving…' : dirty ? 'Save & done' : 'Done'}</Button></div></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(340px,.9fr)]">
         <section className="flex min-h-[550px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:p-8">
-          <div className="relative w-full max-w-[390px]" ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
-            <div className="keepsake-preview"><FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} mode={custom.mode} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} /></div>
+          <div className="relative mx-auto" style={{ width: fittedFrameWidth(custom.layout, booth.participantCount, booth.photosPerPerson, 'min(58dvh, 620px)') }} ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
+            <div className="keepsake-preview"><FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} /></div>
             {custom.objects.map((object) => <button key={object.id} className="absolute z-10 cursor-move touch-none rounded-md border border-dashed border-[#e5786a] bg-[#fffdf8]/75 px-2 py-1 text-sm" style={{ left: `${object.x*100}%`, top: `${object.y*100}%`, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)`, color: object.color }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const rect = event.currentTarget.parentElement?.getBoundingClientRect(); if (rect) { setHistory((items) => [...items.slice(-19), custom]); setRedoHistory([]); dragRef.current = { id: object.id, x: event.clientX, y: event.clientY, originX: object.x, originY: object.y, rect }; } }} onPointerMove={moveObject} onPointerUp={() => { dragRef.current = null; editRevision.current += 1; setDirty(true); }}>{object.kind === 'sticker' && stickerImageMap[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-10 object-contain" /> : object.label}</button>)}
           </div>
         </section>
         <section className="paper-card rounded-[22px] p-4 sm:p-6">
           <div role="tablist" aria-label="Customization tools" className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[#f0ebe3] p-1">{(['Layout','Frame','Filter','Stickers','Text'] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 flex-1 rounded-lg px-2 text-xs font-semibold sm:text-sm ${tab === item ? 'bg-[#fffdf8] shadow-sm' : 'text-[#756f66]'}`}>{item}</button>)}</div>
-          {tab === 'Layout' && <div><h2 className="serif text-2xl">Arrange the moments</h2><p className="text-sm text-[#6f685f]">Changing the layout keeps every caption and decoration.</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} onClick={() => update({ layout: key as CustomizationInput['layout'] })} aria-pressed={custom.layout === key} className={`min-h-12 rounded-xl border p-2 text-sm ${custom.layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5]'}`}>{label}</button>)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm"><span>Scrapbook paper style</span><input type="checkbox" checked={custom.mode === 'scrapbook'} onChange={(e) => update({ mode: e.target.checked ? 'scrapbook' : 'classic' })} /></label></div>}
+          {tab === 'Layout' && <div><h2 className="serif text-2xl">Arrange the moments</h2><p className="text-sm text-[#6f685f]">Changing the layout keeps every caption and decoration.</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} onClick={() => update({ layout: key as CustomizationInput['layout'] })} aria-pressed={custom.layout === key} className={`min-h-12 rounded-xl border p-2 text-sm ${custom.layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5]'}`}>{label}</button>)}</div></div>}
           {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><FrameTypePicker value={custom.frameType} onChange={(frameType) => update({ frameType })} /><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
           {tab === 'Filter' && <div><h2 className="serif text-2xl">A little atmosphere</h2><div className="mt-4 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={custom.filter === value} onClick={() => update({ filter: value })} className={`min-h-[76px] rounded-xl border p-2 text-center ${custom.filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-2 block h-8 w-11 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div></div>}
           {tab === 'Stickers' && <div><h2 className="serif text-2xl">Add a tiny flourish</h2><p className="text-sm text-[#6f685f]">Pick one, then drag it anywhere on the paper.</p>
@@ -905,9 +929,8 @@ export function CreatorStylePage() {
       <div className="mb-5"><p className="eyebrow">Almost there</p><h1 className="serif mt-1 text-4xl">Pick a look for your booth.</h1></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(300px,.85fr)]">
         <section className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:min-h-[480px] sm:p-8">
-          <div className="w-full max-w-[390px] text-center">
-            <div className="keepsake-preview"><FramePreview photos={photos.slice(0, 4)} layout={booth.customization?.layout ?? booth.layout} mode={booth.customization?.mode ?? booth.mode} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} /></div>
-            {photos.length > 4 && <p className="mb-0 mt-2 text-xs text-[#756f66]">Previewing 4 of {photos.length} frames</p>}
+          <div className="text-center" style={{ width: fittedFrameWidth(booth.customization?.layout ?? booth.layout, booth.participantCount, booth.photosPerPerson, 'min(58dvh, 620px)') }}>
+            <div className="keepsake-preview"><FramePreview photos={photos} layout={booth.customization?.layout ?? booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} /></div>
           </div>
         </section>
         <section className="paper-card rounded-[22px] p-4 sm:p-6">

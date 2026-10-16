@@ -422,17 +422,17 @@ components:
         name: { type: string, minLength: 1, maxLength: 50 }
         subtitle: { type: string, maxLength: 80 }
         occasion: { type: string, maxLength: 40 }
-        participantCount: { type: integer, minimum: 2, maximum: 6 }
+        participantCount: { type: integer, minimum: 1, maximum: 6 }
         slots:
           type: array
-          minItems: 2
+          minItems: 1
           maxItems: 6
           items: { type: string, maxLength: 30 }
         mode: { type: string, enum: [classic, scrapbook] }
         layout: { type: string, enum: [vertical, horizontal, double, grid, editorial, freeform, classic-strip, polaroid-stack, mixed-sizes] }
         prompt: { type: string, maxLength: 120 }
         countdownSeconds: { type: integer, enum: [3, 5, 10] }
-        photosPerPerson: { type: integer, minimum: 1, maximum: 4, default: 1 }
+        photosPerPerson: { type: integer, minimum: 1, maximum: 5, default: 1 }
         revealMode: { type: string, enum: [complete, scheduled] }
         scheduledRevealAt: { type: ["string", "null"], format: date-time }
     BoothCreated:
@@ -454,7 +454,7 @@ components:
         layout: { type: string, enum: [vertical, horizontal, double, grid, editorial, freeform, classic-strip, polaroid-stack, mixed-sizes] }
         prompt: { type: string }
         countdownSeconds: { type: integer }
-        photosPerPerson: { type: integer, minimum: 1, maximum: 4, default: 1 }
+        photosPerPerson: { type: integer, minimum: 1, maximum: 5, default: 1 }
         revealMode: { type: string, enum: [complete, scheduled] }
         scheduledRevealAt: { type: ["string", "null"], format: date-time }
         status: { type: string, enum: [collecting, complete, revealed, deleted] }
