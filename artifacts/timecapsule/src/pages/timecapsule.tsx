@@ -100,17 +100,17 @@ export function HomePage() {
   const [, navigate] = useLocation();
   const { user, logout } = useAuth();
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
-  const query = useBooth(activeToken);
+  const query = useBooth(user ? activeToken : '');
   const { entries: archived, selectedIds, ownedTokens } = useArchiveBooths();
   const accountHero = user ? selectedIds.map((id) => archived.find((entry) => entry.id === id)).find(Boolean) ?? archived[0] : undefined;
-  const localBooth = query.data && Array.isArray(query.data.slots) && (!user || ownedTokens.includes(activeToken)) ? query.data : undefined;
+  const localBooth = user && query.data && Array.isArray(query.data.slots) && ownedTokens.includes(activeToken) ? query.data : undefined;
   const booth = accountHero?.booth ?? localBooth;
   const boothDestination = accountHero ? accountHero.token ? `/booth/${accountHero.token}/reveal` : `/archive/${accountHero.id}/reveal` : booth?.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`;
   const submitted = booth?.completedCount ?? 0;
-  const myBoothsQuery = useGetMyBooths({ query: { queryKey: getGetMyBoothsQueryKey(), enabled: Boolean(user) } });
+  const myBoothsQuery = useGetMyBooths({ query: { queryKey: [...getGetMyBoothsQueryKey(), user?.id], enabled: Boolean(user) } });
   const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
-  const featured = selectedIds.flatMap((id) => archived.filter((item) => item.id === id));
-  const heroTitle = user ? `Hi, ${user.displayName}!` : booth ? booth.name : 'Welcome to your';
+  const featured = user ? selectedIds.flatMap((id) => archived.filter((item) => item.id === id)) : [];
+  const heroTitle = user ? `Hi, ${user.displayName}!` : 'Welcome to your';
   const heroSubtitle = booth
     ? (booth.revealAvailable ? 'Everyone is here.' : `${submitted} of ${booth.participantCount} moments added`)
     : user
@@ -149,9 +149,9 @@ export function HomePage() {
               ? <><Button onClick={() => navigate(boothDestination)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
               : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}
           </div>
-          {(archived.length > 0 || user) && <Link href="/archive" className="mt-3 text-sm font-semibold text-[#c76559] underline underline-offset-4">Browse your photostrips</Link>}
-          {!user && !booth && <p className="collage-signin">
-            <Link href="/login" className="font-medium text-[#292723] underline">Sign in</Link> to save your timecapsules across devices.
+          {user && <Link href="/archive" className="mt-3 text-sm font-semibold text-[#c76559] underline underline-offset-4">Browse your photostrips</Link>}
+          {!user && <p className="collage-signin">
+            <Link href="/login?next=%2Fcreate" className="font-medium text-[#292723] underline">Sign in</Link> to create and save a timecapsule.
           </p>}
           {user && <button className="button-quiet mt-2 text-xs underline" onClick={() => void logout()}>Sign out</button>}
         </div>
@@ -317,6 +317,7 @@ function BoothLoading({ error, retry }: { error?: unknown; retry?: () => void })
 export function BoothManagePage() {
   const { privateToken = '' } = useParams<{privateToken:string}>();
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const query = useBooth(privateToken);
   const booth = query.data;
   const creatorToken = localStorage.getItem(creatorKey(privateToken));
@@ -325,6 +326,7 @@ export function BoothManagePage() {
   const deleteBooth = useDeleteBooth({ request: { headers: { 'X-Creator-Token': creatorToken ?? '' } } });
   const inviteUrl = `${location.origin}/join/${privateToken}`;
   const deleteIt = () => {
+    if (!user) { navigate(`/login?next=${encodeURIComponent(`/booth/${privateToken}`)}`); return; }
     if (!creatorToken || !window.confirm('Delete this booth and all of its frames? This cannot be undone.')) return;
     deleteBooth.mutate({ privateToken }, { onSuccess: () => {
       localStorage.removeItem(creatorKey(privateToken));
@@ -349,17 +351,23 @@ export function BoothManagePage() {
 export function JoinPage() {
   const { privateToken = '' } = useParams<{privateToken:string}>();
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const query = useBooth(privateToken);
   const claim = useClaimBoothSlot();
   const [displayName, setDisplayName] = useState('');
-  const [slotId, setSlotId] = useState('');
+  const [slotId, setSlotId] = useState(() => new URLSearchParams(location.search).get('slot') ?? '');
   const booth = query.data;
   const selectable = booth?.slots.filter((slot) => slot.claimStatus === 'open' && slot.position % (booth.photosPerPerson ?? 1) === 0) ?? [];
   const selectedSlot = selectable.find((slot) => slot.id === slotId) ?? selectable[0];
   const assignedName = selectedSlot?.displayName.trim() ?? '';
   const claimDisplayName = assignedName || displayName;
   const submit = async () => {
+    if (!user) {
+      const destination = `/join/${privateToken}?slot=${encodeURIComponent(selectedSlot?.id ?? '')}`;
+      navigate(`/login?next=${encodeURIComponent(destination)}`);
+      return;
+    }
     const data: SlotClaimInput = { displayName: claimDisplayName.trim(), slotId: selectedSlot?.id ?? null };
     claim.mutate({ privateToken, data }, { onSuccess: async (result) => {
       localStorage.setItem(participantKey(privateToken, result.slotId), result.participantToken);
@@ -383,13 +391,13 @@ export function JoinPage() {
       <div className="rounded-[28px] bg-[#292723] px-6 py-8 text-center text-[#fffdf8] sm:px-10"><p className="eyebrow text-[#cfc8be]">{booth.occasion || 'A private photobooth'}</p><h1 className="serif mt-3 text-4xl sm:text-5xl">{booth.name}</h1>{booth.subtitle && <p className="mb-0 mt-3 text-[#ded7ce]">{booth.subtitle}</p>}<p className="mb-0 mt-5 text-xs text-[#cfc8be]">{booth.participantCount} FRAMES · ABOUT A MINUTE EACH</p></div>
       <Panel className="mt-5"><span className="eyebrow">A little prompt</span><blockquote className="serif mb-0 mt-2 rounded-2xl bg-[#f1e5dc] p-5 text-2xl">{booth.prompt || defaultPrompt}</blockquote>
         {booth.revealAvailable ? <div className="mt-5 rounded-xl bg-[#e6f0eb] p-4 text-sm">This booth is ready to open. <button className="underline" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>See the finished keepsake</button></div> : <>
-          <h2 className="serif mb-1 mt-7 text-3xl">Choose your spot.</h2><p className="mb-5 text-sm text-[#6f685f]">No account, no rush. Your {booth.photosPerPerson === 1 ? 'photo stays' : `${booth.photosPerPerson} photos stay`} private until everyone’s ready.</p>
+          <h2 className="serif mb-1 mt-7 text-3xl">Choose your spot.</h2><p className="mb-5 text-sm text-[#6f685f]">Sign in to add your {booth.photosPerPerson === 1 ? 'photo' : `${booth.photosPerPerson} photos`}. Your photos stay private until everyone’s ready.</p>
           {selectable.length === 0 ? <div className="rounded-xl border border-dashed border-[#cfc5b7] p-5 text-center text-sm text-[#6f685f]">All the frames have been claimed. Ask the booth maker to share an open spot.</div> : <>
             <label className="field-label" htmlFor="invite-slot">Pick your name</label><select id="invite-slot" className="input-paper mb-2" value={selectedSlot?.id ?? ''} onChange={(e) => setSlotId(e.target.value)}>{selectable.map((slot) => <option key={slot.id} value={slot.id}>{slot.displayName || `Person ${Math.floor(slot.position / (booth.photosPerPerson ?? 1)) + 1}`}</option>)}</select>
             {assignedName ? <p className="mb-4 text-sm text-[#6f685f]">This frame is labeled <strong>{assignedName}</strong>.</p> : <><label className="field-label" htmlFor="invite-name">Your name</label><input id="invite-name" data-testid="input-participant-name" className="input-paper mb-4" maxLength={30} placeholder="What should we call you?" value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></>}
             <div className="flex items-center gap-2 text-xs text-[#6f685f]"><LockGlyph /> Your frame is hidden from the group until all are confirmed.</div>
             {claim.isError && <div className="mt-4"><ErrorNote message={getError(claim.error)} /></div>}
-            <Button className="mt-5 w-full" disabled={!claimDisplayName.trim() || claim.isPending} onClick={submit}>{claim.isPending ? <LoaderCircle className="animate-spin" /> : null} Claim this frame <ArrowRight size={17} /></Button>
+            <Button className="mt-5 w-full" disabled={(Boolean(user) && !claimDisplayName.trim()) || claim.isPending} onClick={submit}>{claim.isPending ? <LoaderCircle className="animate-spin" /> : null} {user ? 'Claim this frame' : 'Sign in to claim this frame'} <ArrowRight size={17} /></Button>
           </>}
         </>}
       </Panel>
@@ -727,7 +735,7 @@ export function RevealPage() {
     }
     canvas.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${booth.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-photobooth.png`; link.click(); URL.revokeObjectURL(url); },'image/png');
   };
-  if (boothId && !user) return <Shell><TopBar /><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate('/login')}>Sign in</Button></Panel></div></Shell>;
+  if (boothId && !user) return <Shell><TopBar /><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate(`/login?next=${encodeURIComponent(`/archive/${boothId}/reveal`)}`)}>Sign in</Button></Panel></div></Shell>;
   if ((privateToken ? query.isLoading : archiveLoading) || !booth) return <Shell dark><TopBar dark /><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={privateToken ? query.error : archiveError} retry={() => privateToken ? void query.refetch() : navigate('/archive')} /></div></Shell>;
   if (!booth.revealAvailable) return <Shell><TopBar /><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos are kept private until every frame is confirmed and the reveal time arrives.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
   return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-10 text-[#fffdf8]">
@@ -956,6 +964,8 @@ export function CreatorStylePage() {
 
 export function NotificationsPage() {
   const { privateToken = '' } = useParams<{privateToken:string}>();
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
   const query = useBooth(privateToken);
   const confirmed = new URLSearchParams(location.search).get('confirmed') === '1' || Object.keys(localStorage).some((key) => key.startsWith(`tc-confirmed:${privateToken}:`) && localStorage.getItem(key) === 'true');
   const creatorToken = localStorage.getItem(creatorKey(privateToken)) ?? '';
@@ -977,6 +987,7 @@ export function NotificationsPage() {
     return () => { window.removeEventListener('beforeinstallprompt', listener); };
   }, []);
   const setup = async () => {
+    if (!user) { navigate(`/login?next=${encodeURIComponent(`/booth/${privateToken}/notifications`)}`); return; }
     if (!canOptIn) { setStatus('Confirm a frame first. The private link remains available at any time.'); return; }
     if (!pushSupported || !vapidKey || !accessToken) { setStatus('Push setup is not available on this browser or device. Keep the private link so you can return.'); return; }
     try {
@@ -1009,9 +1020,9 @@ export function NotificationsPage() {
   const url = `${location.origin}/booth/${privateToken}`;
   return <Shell><TopBar right={<span className="eyebrow">Notifications</span>} /><div className="mx-auto max-w-[650px] py-10 sm:py-14">
     {confirmed && <div className="mb-5 rounded-2xl border border-[#c3d9cf] bg-[#e6f0eb] p-4 text-sm text-[#435c50]"><strong>Your frame is safely tucked away.</strong> It won’t be seen until everyone has confirmed.</div>}
-    <Panel><p className="eyebrow text-[#e5786a]">✦ keep the link close</p><h1 className="serif mt-2 text-4xl sm:text-5xl">Come back when the booth is ready.</h1><p className="mt-3 leading-7 text-[#6f685f]">If you’d like, this device can let you know when the keepsake opens. You can also just keep the private link—no app or account needed.</p>
+    <Panel><p className="eyebrow text-[#e5786a]">✦ keep the link close</p><h1 className="serif mt-2 text-4xl sm:text-5xl">Come back when the booth is ready.</h1><p className="mt-3 leading-7 text-[#6f685f]">You can keep the private link to view the keepsake. Sign in if you’d like to enable a notification on this device.</p>
       <div className="mt-6 rounded-2xl bg-[#f0ebe3] p-5"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full bg-[#dce8e3]"><Heart size={20} /></span><div><strong>Keep your private link</strong><p className="mb-0 text-sm text-[#6f685f]">Anyone with the link can see the booth when it’s ready.</p></div></div><div className="mt-4 flex flex-wrap gap-3"><CopyButton text={url}><Link2 size={16} /> Copy booth link</CopyButton><a className="button-secondary inline-flex items-center no-underline" href={url}>Open booth</a></div></div>
-      <div className="mt-5 rounded-2xl border border-[#e2dbd1] p-5"><h2 className="serif text-2xl">A gentle nudge on this device</h2><p className="text-sm leading-6 text-[#6f685f]">Notifications are optional. We’ll only ask after you choose, and only once a frame is confirmed. The private link always works as a fallback.</p><Button variant="secondary" disabled={!canOptIn || !pushSupported || !accessToken || isSubscribed || subscribeToReady.isPending} onClick={() => void setup()}>{subscribeToReady.isPending ? 'Setting up…' : isSubscribed ? 'Notifications set up' : !pushSupported ? 'Use the private link instead' : !canOptIn ? 'Available after frame confirmation' : 'Enable notifications'}</Button>{!canOptIn && <p className="mt-2 text-xs text-[#6f685f]">Finish your frame first. You can choose notifications after it is safely confirmed.</p>}{!pushSupported && <p className="mt-2 text-xs text-[#6f685f]">This browser needs service worker, push, notification support, and a configured public key. Save the private link instead.</p>}{status && <p role="status" className="mt-3 text-sm text-[#6f685f]">{status}</p>}{permission === 'denied' && <p className="mt-2 text-xs text-[#6f685f]">Your browser has notifications blocked. The private link works just as well.</p>}</div>
+      <div className="mt-5 rounded-2xl border border-[#e2dbd1] p-5"><h2 className="serif text-2xl">A gentle nudge on this device</h2><p className="text-sm leading-6 text-[#6f685f]">Notifications are optional. We’ll only ask after you choose, and only once a frame is confirmed. The private link always works as a fallback.</p><Button variant="secondary" disabled={Boolean(user) && (!canOptIn || !pushSupported || !accessToken || isSubscribed || subscribeToReady.isPending)} onClick={() => void setup()}>{!user ? 'Sign in to enable notifications' : subscribeToReady.isPending ? 'Setting up…' : isSubscribed ? 'Notifications set up' : !pushSupported ? 'Use the private link instead' : !canOptIn ? 'Available after frame confirmation' : 'Enable notifications'}</Button>{!canOptIn && <p className="mt-2 text-xs text-[#6f685f]">Finish your frame first. You can choose notifications after it is safely confirmed.</p>}{!pushSupported && <p className="mt-2 text-xs text-[#6f685f]">This browser needs service worker, push, notification support, and a configured public key. Save the private link instead.</p>}{status && <p role="status" className="mt-3 text-sm text-[#6f685f]">{status}</p>}{permission === 'denied' && <p className="mt-2 text-xs text-[#6f685f]">Your browser has notifications blocked. The private link works just as well.</p>}</div>
       <details className="mt-4 rounded-xl border border-[#e2dbd1] p-4"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Add this booth to your Home Screen</summary><p className="mb-3 text-sm leading-6 text-[#6f685f]">On iPhone or iPad, open this link in Safari, tap Share, then choose “Add to Home Screen.” On Android, open the browser menu and choose “Install app” or “Add to Home screen.”</p><Button variant="secondary" onClick={() => void install()}>{installPrompt ? 'Install Timecapsule' : 'Show install instructions'}</Button></details>
       {query.data?.revealAvailable && <a className="button-primary mt-6 inline-flex items-center no-underline" href={`/booth/${privateToken}/reveal`}>See the finished keepsake <ArrowRight size={17} /></a>}
     </Panel>

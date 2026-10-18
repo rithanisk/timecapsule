@@ -47,6 +47,16 @@ const storage = new ObjectStorageService();
 const MAX_IMAGE_BYTES = 12_000_000;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+// Private links grant viewing and identify a participant or creator, but a
+// signed-in account is required before any booth data is changed.
+router.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD" && !req.session.userId) {
+    res.status(401).json({ error: "Sign in to save changes to a timecapsule." });
+    return;
+  }
+  next();
+});
+
 function tokenHash(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -174,7 +184,7 @@ router.post("/booths", async (req, res): Promise<void> => {
         scheduledRevealAt: input.scheduledRevealAt ? new Date(input.scheduledRevealAt) : null,
         status: "collecting",
         customization,
-        ...(req.session?.userId ? { userId: req.session.userId } : {}),
+        userId: req.session.userId,
       };
       // Only include photosPerPerson if > 1 to avoid errors on DBs without the column
       if (photosPerPerson > 1) boothValues.photosPerPerson = photosPerPerson;
@@ -834,7 +844,7 @@ router.put("/booths/:privateToken/customization", async (req, res): Promise<void
     return;
   }
   const booth = await findBooth(params.data.privateToken);
-  if (!booth || !tokenMatches(headers.data["X-Creator-Token"], booth.creatorTokenHash)) {
+  if (!booth || (booth.userId && booth.userId !== req.session.userId) || !tokenMatches(headers.data["X-Creator-Token"], booth.creatorTokenHash)) {
     res.status(403).json({ error: "Only the booth creator can change its design." });
     return;
   }
@@ -864,7 +874,7 @@ router.delete("/booths/:privateToken", async (req, res): Promise<void> => {
     return;
   }
   const booth = await findBooth(params.data.privateToken);
-  if (!booth || !tokenMatches(headers.data["X-Creator-Token"], booth.creatorTokenHash)) {
+  if (!booth || (booth.userId && booth.userId !== req.session.userId) || !tokenMatches(headers.data["X-Creator-Token"], booth.creatorTokenHash)) {
     res.status(403).json({ error: "Only the booth creator can delete it." });
     return;
   }

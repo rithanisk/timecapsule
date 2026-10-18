@@ -17,7 +17,7 @@ import {
   RevealPage,
 } from '@/pages/timecapsule';
 import { LoginPage, RegisterPage } from '@/pages/auth';
-import { AuthProvider } from '@/hooks/use-auth';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
 import {
   Route,
   Switch,
@@ -26,6 +26,20 @@ import {
 } from 'wouter';
 
 const queryClient = new QueryClient();
+
+function RequireSignIn({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const destination = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(destination)}`, { replace: true });
+    }
+  }, [isLoading, user, navigate]);
+
+  return user ? <>{children}</> : null;
+}
 
 function Router() {
   return (
@@ -36,14 +50,14 @@ function Router() {
         <Route path="/" component={HomePage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
-        <Route path="/create" component={CreateBoothPage} />
+        <Route path="/create"><RequireSignIn><CreateBoothPage /></RequireSignIn></Route>
         <Route path="/archive/:boothId/reveal" component={RevealPage} />
-        <Route path="/archive" component={ArchivePage} />
-        <Route path="/join/:privateToken/capture" component={CapturePage} />
+        <Route path="/archive"><RequireSignIn><ArchivePage /></RequireSignIn></Route>
+        <Route path="/join/:privateToken/capture"><RequireSignIn><CapturePage /></RequireSignIn></Route>
         <Route path="/join/:privateToken" component={JoinPage} />
         <Route path="/booth/:privateToken/reveal" component={RevealPage} />
-        <Route path="/booth/:privateToken/style" component={CreatorStylePage} />
-        <Route path="/booth/:privateToken/edit" component={EditorPage} />
+        <Route path="/booth/:privateToken/style"><RequireSignIn><CreatorStylePage /></RequireSignIn></Route>
+        <Route path="/booth/:privateToken/edit"><RequireSignIn><EditorPage /></RequireSignIn></Route>
         <Route path="/booth/:privateToken/notifications" component={NotificationsPage} />
         <Route path="/booth/:privateToken" component={BoothManagePage} />
         <Route component={NotFound} />

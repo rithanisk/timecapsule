@@ -9,6 +9,7 @@ import {
   useLogout,
   useRegister,
   getGetMeQueryKey,
+  getGetMyBoothsQueryKey,
 } from "@workspace/api-client-react";
 
 interface AuthContextValue {
@@ -70,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {
             onSuccess: () => {
               queryClient.setQueryData(getGetMeQueryKey(), null);
+              queryClient.removeQueries({ queryKey: getGetMyBoothsQueryKey() });
+              queryClient.removeQueries({ queryKey: ["account-archive"] });
               queryClient.removeQueries({ queryKey: getGetMeQueryKey() });
               resolve();
             },

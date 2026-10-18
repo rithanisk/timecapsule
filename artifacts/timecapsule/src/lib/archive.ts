@@ -1,23 +1,11 @@
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAccountArchive, getBooth, getGetBoothQueryKey, linkBoothToAccount, linkParticipationToAccount, saveArchiveHomeSelection, type AccountArchive, type BoothState } from '@workspace/api-client-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAccountArchive, linkBoothToAccount, linkParticipationToAccount, saveArchiveHomeSelection, type AccountArchive, type BoothState } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
 
 const selectionKey = 'tc-home-strips';
 const linkedLocalTokens = new Map<string, string>();
 type ArchiveEntry = { id: string; token?: string; booth: BoothState };
 type LinkedAccountArchive = AccountArchive & { linkedTokens: Record<string, string> };
-
-export function availableBoothTokens(): string[] {
-  const tokens = new Set<string>();
-  const active = localStorage.getItem('tc-active-booth');
-  if (active) tokens.add(active);
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index) ?? '';
-    if (key.startsWith('tc-creator:')) tokens.add(key.slice('tc-creator:'.length));
-    if (key.startsWith('tc-participant:')) tokens.add(key.slice('tc-participant:'.length).split(':')[0]);
-  }
-  return [...tokens];
-}
 
 export function readHomeSelection(): string[] {
   try {
@@ -79,33 +67,23 @@ async function fetchAccountArchive(userId: string): Promise<LinkedAccountArchive
 export function useArchiveBooths(): { entries: ArchiveEntry[]; selectedIds: string[]; ownedTokens: string[]; isLoading: boolean; error: Error | null; saveSelection: (ids: string[]) => Promise<void> } {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const tokens = availableBoothTokens();
-  const localQueries = useQueries({ queries: tokens.map((token) => ({
-    queryKey: getGetBoothQueryKey(token), queryFn: () => getBooth(token), enabled: !user, retry: false, staleTime: 30_000,
-  })) });
   const accountKey = ['account-archive', user?.id];
   const accountQuery = useQuery({ queryKey: accountKey, queryFn: () => fetchAccountArchive(user!.id), enabled: Boolean(user), staleTime: 0, refetchInterval: 30_000, retry: false });
   const account = accountQuery.data;
-  const localEntries = (user ? [] : tokens).flatMap((token, index) => {
-    const booth = localQueries[index]?.data;
-    return booth?.revealAvailable && !account?.linkedTokens[token] ? [{ id: token, token, booth }] : [];
-  });
   const accountEntries = (account?.entries ?? []).map((entry) => ({ ...entry, token: Object.keys(account?.linkedTokens ?? {}).find((token) => account?.linkedTokens[token] === entry.id) }));
-  const entries = [...accountEntries, ...localEntries];
-  const selectedIds = [...(account?.selectedIds ?? []), ...readHomeSelection().filter((token) => localEntries.some((entry) => entry.id === token))];
+  const entries = accountEntries;
+  const selectedIds = account?.selectedIds ?? [];
   const saveSelection = async (ids: string[]) => {
-    if (!user) { writeLocalSelection(ids); return; }
+    if (!user) throw new Error('Sign in to save your home page selection.');
     const accountIds = ids.filter((id) => account?.entries.some((entry) => entry.id === id));
-    const localIds = ids.filter((id) => localEntries.some((entry) => entry.id === id));
     const saved = await saveArchiveHomeSelection({ selectedIds: accountIds });
-    writeLocalSelection(localIds);
     queryClient.setQueryData<LinkedAccountArchive>(accountKey, (old) => old ? { ...old, selectedIds: saved.selectedIds } : old);
   };
   return {
     entries,
     selectedIds,
     ownedTokens: Object.keys(account?.linkedTokens ?? {}),
-    isLoading: (!user && localQueries.some((query) => query.isPending)) || Boolean(user && accountQuery.isPending),
+    isLoading: Boolean(user && accountQuery.isPending),
     error: accountQuery.error,
     saveSelection,
   };

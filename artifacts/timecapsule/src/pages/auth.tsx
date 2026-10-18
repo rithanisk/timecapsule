@@ -15,6 +15,18 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+function returnPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
+    ? next
+    : "/";
+}
+
+function otherAuthPath(path: "/login" | "/register"): string {
+  const next = returnPath();
+  return next === "/" ? path : `${path}?next=${encodeURIComponent(next)}`;
+}
+
 export function LoginPage() {
   const [, navigate] = useLocation();
   const { login } = useAuth();
@@ -29,7 +41,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login({ email, password });
-      navigate("/");
+      navigate(returnPath());
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -80,7 +92,7 @@ export function LoginPage() {
           </form>
           <p className="mt-5 text-center text-sm text-[#756f66]">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-medium text-[#292723] underline">
+            <Link href={otherAuthPath("/register")} className="font-medium text-[#292723] underline">
               Create one
             </Link>
           </p>
@@ -105,7 +117,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register({ email, password, displayName });
-      navigate("/");
+      navigate(returnPath());
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -169,7 +181,7 @@ export function RegisterPage() {
           </form>
           <p className="mt-5 text-center text-sm text-[#756f66]">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-[#292723] underline">
+            <Link href={otherAuthPath("/login")} className="font-medium text-[#292723] underline">
               Sign in
             </Link>
           </p>

@@ -32,7 +32,7 @@ paths:
     post:
       operationId: createBooth
       tags: [booths]
-      summary: Create a private booth
+      summary: Create a private booth (sign-in required)
       requestBody:
         required: true
         content:
@@ -63,7 +63,7 @@ paths:
     delete:
       operationId: deleteBooth
       tags: [booths]
-      summary: Delete a booth
+      summary: Delete a booth (sign-in required)
       parameters:
         - $ref: "#/components/parameters/CreatorToken"
       responses:
@@ -75,7 +75,7 @@ paths:
     post:
       operationId: claimBoothSlot
       tags: [booths]
-      summary: Claim an available participant slot
+      summary: Claim an available participant slot (sign-in required)
       requestBody:
         required: true
         content:
@@ -97,7 +97,7 @@ paths:
     post:
       operationId: requestFrameUpload
       tags: [booths]
-      summary: Request a private upload URL for a confirmed candidate frame
+      summary: Request a private upload URL for a confirmed candidate frame (sign-in required)
       requestBody:
         required: true
         content:
@@ -119,7 +119,7 @@ paths:
     post:
       operationId: confirmBoothFrame
       tags: [booths]
-      summary: Confirm an uploaded frame
+      summary: Confirm an uploaded frame (sign-in required)
       requestBody:
         required: true
         content:
@@ -151,7 +151,7 @@ paths:
     delete:
       operationId: deleteDraftPhoto
       tags: [booths]
-      summary: Delete a saved photo before finalizing the participant's set
+      summary: Delete a saved photo before finalizing the participant's set (sign-in required)
       responses:
         "204":
           description: Saved photo deleted
@@ -163,7 +163,7 @@ paths:
     post:
       operationId: finalizeParticipantPhotos
       tags: [booths]
-      summary: Finalize every saved photo for one participant
+      summary: Finalize every saved photo for one participant (sign-in required)
       responses:
         "200":
           description: Finalized photos and updated booth status
@@ -177,7 +177,7 @@ paths:
     put:
       operationId: saveBoothCustomization
       tags: [booths]
-      summary: Save a booth's reveal artifact customization
+      summary: Save a booth's reveal artifact customization (sign-in required)
       parameters:
         - $ref: "#/components/parameters/CreatorToken"
       requestBody:
@@ -200,7 +200,7 @@ paths:
     post:
       operationId: subscribeToBoothReady
       tags: [booths]
-      summary: Save a user-initiated booth-ready push subscription
+      summary: Save a user-initiated booth-ready push subscription (sign-in required)
       requestBody:
         required: true
         content:

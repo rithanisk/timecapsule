@@ -30,7 +30,7 @@ pnpm --filter @workspace/api-spec run codegen
 
 ## Privacy and retention
 
-- Accounts are optional. Signed-in creators and participants can see revealed booths and their home page photostrip choices across devices. Guest booth access still uses private links stored on the current device. Creator and participant token hashes are stored in the database.
+- Sign-in is required to create a booth, claim a frame, save photos, change a keepsake, delete a booth, or save a notification subscription. The API rejects unsigned booth writes. Private links still let guests view booth progress and revealed keepsakes. The signed-out home page always shows the same sample collage; signed-in accounts show their own booths and home page photostrip choices. Creator and participant token hashes remain in the database.
 - Photo files are stored in private App Storage; PostgreSQL stores booth, slot, ownership, customization, and home selection records with paths to those files.
 - App Storage objects remain private. A frame is uploaded only after the participant confirms it; the API validates and normalizes it to JPEG, rotating pixels according to camera orientation and stripping embedded metadata.
 - Photo routes check the booth reveal gate and disable caching. API logs redact booth tokens.
