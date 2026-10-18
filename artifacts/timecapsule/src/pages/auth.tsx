@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Button, ErrorNote, Panel, Shell, TopBar } from "@/components/timecapsule-ui";
+import { Button, ErrorNote, Panel, Shell } from "@/components/timecapsule-ui";
 import { LoaderCircle } from "lucide-react";
 
 function getErrorMessage(error: unknown): string {
@@ -51,7 +51,6 @@ export function LoginPage() {
 
   return (
     <Shell>
-      <TopBar />
       <section className="mx-auto max-w-[420px] pt-10">
         <Panel>
           <h1 className="serif mb-1 text-2xl">Welcome back</h1>
@@ -127,7 +126,6 @@ export function RegisterPage() {
 
   return (
     <Shell>
-      <TopBar />
       <section className="mx-auto max-w-[420px] pt-10">
         <Panel>
           <h1 className="serif mb-1 text-2xl">Create your account</h1>

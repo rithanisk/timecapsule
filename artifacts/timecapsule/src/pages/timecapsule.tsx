@@ -13,9 +13,9 @@ import {
   saveBoothCustomization,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, TopBar, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
+import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
-import { sampleStripPhotos } from '@/home-samples';
+import { sampleStripPhotos, sampleTemplatePhotos } from '@/home-samples';
 import { useArchiveBooths } from '@/lib/archive';
 import { frameAssetUrl, frameOverlayFilter, getFrameLayout, photoIndexForSlot } from '@/lib/frame-layouts';
 
@@ -102,8 +102,8 @@ export function HomePage() {
   const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
   const query = useBooth(user ? activeToken : '');
   const { entries: archived, selectedIds, ownedTokens } = useArchiveBooths();
-  const accountHero = user ? selectedIds.map((id) => archived.find((entry) => entry.id === id)).find(Boolean) ?? archived[0] : undefined;
-  const localBooth = user && query.data && Array.isArray(query.data.slots) && ownedTokens.includes(activeToken) ? query.data : undefined;
+  const accountHero = user ? selectedIds.map((id) => archived.find((entry) => entry.id === id)).find(Boolean) : undefined;
+  const localBooth = user && query.data && !query.data.revealAvailable && Array.isArray(query.data.slots) && ownedTokens.includes(activeToken) ? query.data : undefined;
   const booth = accountHero?.booth ?? localBooth;
   const boothDestination = accountHero ? accountHero.token ? `/booth/${accountHero.token}/reveal` : `/archive/${accountHero.id}/reveal` : booth?.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`;
   const submitted = booth?.completedCount ?? 0;
@@ -133,7 +133,6 @@ export function HomePage() {
     ] : []),
   ];
   return <Shell>
-    <TopBar />
     <section className="mx-auto max-w-[1100px] pb-8 pt-5 sm:pt-8">
       <div className={`home-collage ${booth && booth.slots.length > 12 ? 'has-extra-strips' : ''} ${booth?.revealAvailable && booth.slots.length > 20 ? 'has-desktop-extra' : ''}`} aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
         <div className="collage-center">
@@ -158,11 +157,8 @@ export function HomePage() {
         {homeStrips.map(({ layout, frameType }, index) => {
           const featuredBooth = featured[index]?.booth;
           const stripSlots = booth?.slots.slice(index * 2, index * 2 + 2) ?? [];
-          const hasRevealedPhotos = Boolean(booth?.revealAvailable && stripSlots.some((slot) => slot.photoUrl));
-          const photos = hasRevealedPhotos
-            ? Array.from({ length: 2 }, (_, slotIndex) => stripSlots[slotIndex]?.photoUrl ?? '')
-            : sampleStripPhotos[index] ?? ['', ''];
-          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!featuredBooth && !hasRevealedPhotos}>
+          const photos = sampleStripPhotos[index] ?? ['', ''];
+          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!featuredBooth}>
             {featuredBooth ? <FramePreview photos={featuredBooth.slots.map((slot) => slot.photoUrl ?? '')} layout={featuredBooth.customization.layout || featuredBooth.layout} people={featuredBooth.participantCount} photosPerPerson={featuredBooth.photosPerPerson} caption={featuredBooth.customization.caption} frameColor={featuredBooth.customization.frameColor} filter={featuredBooth.customization.filter} frameType={featuredBooth.customization.frameType} objects={featuredBooth.customization.objects} showDate={false} captionPosition={featuredBooth.customization.captionPosition} captionFont={featuredBooth.customization.captionFont} slotAdjustments={featuredBooth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact /> : <FramePreview photos={photos} layout={layout} compact frameType={frameType} people={1} photosPerPerson={2} />}
           </div>;
         })}
@@ -213,22 +209,21 @@ export function ArchivePage() {
     try { await saveSelection(next); }
     catch (reason) { setSelected(selected); setSelectionError(getError(reason)); }
   };
-  return <Shell><TopBar right={<span className="eyebrow">Photostrip archive</span>} />
-    <div className="mx-auto max-w-[900px] py-7 sm:py-11">
-      <button className="button-quiet mb-6 inline-flex items-center gap-2 !px-0" onClick={() => navigate('/')}><ArrowLeft size={16} /> Home</button>
-      <div className="mb-5 text-center"><h1 className="serif text-4xl sm:text-5xl">Your photostrips.</h1><p className="mt-2 text-sm text-[#756f66]">Swipe or use the arrows. Heart the ones to show on your home page.</p><span className="text-sm text-[#756f66]">{selected.length} of 12 on home</span></div>
+  return <Shell>
+    <div className="mx-auto max-w-[900px] py-5 sm:py-7">
+      {!current && <div className="mb-3 text-center"><h1 className="serif text-3xl sm:text-4xl">Your photostrips.</h1><p className="mt-1 text-xs text-[#756f66]">Finished strips will appear here.</p></div>}
       {isLoading && !current ? <LoadingCard /> : !current ? <Panel className="py-16 text-center">{archiveError ? <ErrorNote message={getError(archiveError)} /> : <><h2 className="serif text-3xl">The archive is waiting.</h2><p className="text-[#756f66]">Finished photostrips will appear here.</p><Button onClick={() => navigate('/create')}>Start a timecapsule</Button></>}</Panel> : <>
-        <div className="mb-3 text-center"><p className="mb-0 text-sm text-[#756f66]">{index + 1} / {archived.length}</p><h2 className="serif mt-1 text-2xl">{current.booth.name}</h2></div>
+        <div className="mb-3 text-center"><p className="mb-0 text-sm text-[#756f66]">{index + 1} of {archived.length} · {selected.length} liked</p><h1 className="serif mt-1 text-3xl">{current.booth.name}</h1></div>
         <div className="archive-stage" onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { if (touchStart.current === null) return; const distance = event.changedTouches[0].clientX - touchStart.current; if (Math.abs(distance) > 45) move(distance < 0 ? 1 : -1); touchStart.current = null; }}>
           <button className="archive-arrow" aria-label="Previous photostrip" disabled={archived.length < 2} onClick={() => move(-1)}><ArrowLeft size={22} /></button>
           <div className="archive-window"><AnimatePresence initial={false} custom={direction} mode="popLayout">
-            <motion.div key={current.id} className="archive-print" style={{ width: fittedFrameWidth(current.booth.customization.layout || current.booth.layout, current.booth.participantCount, current.booth.photosPerPerson, 'min(45dvh, 560px)') }} custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
+            <motion.div key={current.id} className="archive-print" style={{ width: fittedFrameWidth(current.booth.customization.layout || current.booth.layout, current.booth.participantCount, current.booth.photosPerPerson, 'min(40dvh, 420px)') }} custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
               <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} people={current.booth.participantCount} photosPerPerson={current.booth.photosPerPerson} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />
             </motion.div>
           </AnimatePresence></div>
           <button className="archive-arrow" aria-label="Next photostrip" disabled={archived.length < 2} onClick={() => move(1)}><ArrowRight size={22} /></button>
         </div>
-        <div className="mx-auto mt-4 flex max-w-[600px] items-center justify-center gap-5"><button type="button" className={`archive-heart ${selected.includes(current.id) ? 'is-liked' : ''}`} aria-label={selected.includes(current.id) ? 'Remove from home page' : 'Show on home page'} aria-pressed={selected.includes(current.id)} title={selected.includes(current.id) ? 'Remove from home page' : 'Show on home page'} disabled={!selected.includes(current.id) && selected.length >= 12} onClick={() => void toggle()}><Heart size={29} fill={selected.includes(current.id) ? 'currentColor' : 'none'} strokeWidth={1.8} /></button><Button variant="quiet" onClick={() => navigate(current.token ? `/booth/${current.token}/reveal` : `/archive/${current.id}/reveal`)}>Open keepsake</Button></div>
+        <div className="mx-auto mt-3 flex max-w-[600px] items-center justify-center gap-5"><button type="button" className={`archive-heart ${selected.includes(current.id) ? 'is-liked' : ''}`} aria-label={selected.includes(current.id) ? 'Unlike photostrip' : 'Like photostrip'} aria-pressed={selected.includes(current.id)} title={selected.includes(current.id) ? 'Remove from home page' : 'Show on home page'} disabled={!selected.includes(current.id) && selected.length >= 12} onClick={() => void toggle()}><Heart size={29} fill={selected.includes(current.id) ? 'currentColor' : 'none'} strokeWidth={1.8} /></button><Button variant="quiet" onClick={() => navigate(current.token ? `/booth/${current.token}/reveal` : `/archive/${current.id}/reveal`)}>Open keepsake</Button><Button variant="quiet" onClick={() => navigate('/')}>Home</Button></div>
         {selectionError && <div className="mx-auto mt-4 max-w-[600px]"><ErrorNote message={selectionError} /></div>}
       </>}
     </div>
@@ -253,6 +248,8 @@ export function CreateBoothPage() {
   const [countdownSeconds, setCountdownSeconds] = useState<3|5|10>(5);
   const [revealMode, setRevealMode] = useState<'complete'|'scheduled'>('complete');
   const [scheduledRevealAt, setScheduledRevealAt] = useState('');
+  const previewPhotos = useMemo(() => sampleTemplatePhotos(count, photosPerPerson), [count, photosPerPerson]);
+  const frameColor = frameType === 'solid' ? '#E5786A' : '#FFFDF8';
   const setNameAt = (index: number, value: string) => setNames((prev) => prev.map((item, i) => i === index ? value : item));
   const submit = () => {
     const slots = Array.from({ length: count }, (_, i) => names[i]?.trim() || `Friend ${i + 1}`);
@@ -260,7 +257,7 @@ export function CreateBoothPage() {
     createBooth.mutate({ data }, { onSuccess: async (created) => {
       localStorage.setItem(creatorKey(created.privateToken), created.creatorToken);
       try {
-        await saveBoothCustomization(created.privateToken, { mode: 'classic', layout, frameType, frameColor: '#FFFDF8', filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
+        await saveBoothCustomization(created.privateToken, { mode: 'classic', layout, frameType, frameColor, filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
       } catch { localStorage.setItem(pendingFrameKey(created.privateToken), frameType); }
       const firstSlot = created.state.slots[0];
       if (firstSlot) {
@@ -276,7 +273,7 @@ export function CreateBoothPage() {
       }
     } });
   };
-  return <Shell><TopBar right={<span className="eyebrow">Create a private booth</span>} />
+  return <Shell>
     <div className="mx-auto max-w-[760px] py-8 sm:py-12">
       <button onClick={() => step === 1 ? navigate('/') : setStep(step - 1)} className="button-quiet mb-5 inline-flex items-center gap-2 !px-0"><ArrowLeft size={16} /> Back</button>
       <div className="mb-7 flex items-center justify-between"><p className="eyebrow">A few details, then it’s yours</p><span className="text-xs text-[#756f66]">STEP {step} OF 3</span></div>
@@ -291,9 +288,12 @@ export function CreateBoothPage() {
           <span className="field-label">Each person's name</span><div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: count }, (_, i) => <label key={i} className="flex items-center gap-2"><span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold ${['bg-[#ecd1c8]','bg-[#d5e2dc]','bg-[#dbe4f0]','bg-[#f0e2c2]'][i % 4]}`}>{i+1}</span><input className="input-paper !min-h-[46px]" aria-label={`Name for person ${i + 1}`} maxLength={30} placeholder={i ? `Friend ${i + 1}` : 'Your name'} value={names[i] ?? ''} onChange={(e) => setNameAt(i,e.target.value)} /></label>)}</div>
         </div>}
         {step === 2 && <div><h1 className="serif text-4xl sm:text-5xl">Choose the feeling.</h1><p className="mb-7 mt-2 text-[#6f685f]">Try each frame and layout before you begin.</p>
-          <div className="mb-7 flex justify-center p-2"><div style={{ width: fittedFrameWidth(layout, count, photosPerPerson, '320px') }}><FramePreview photos={Array.from({ length: count * photosPerPerson }, (_, index) => sampleStripPhotos[index % sampleStripPhotos.length]?.[index % 2] ?? '')} people={count} photosPerPerson={photosPerPerson} layout={layout} frameType={frameType} showDate={false} /></div></div>
+          <div className="mb-3 flex min-h-[320px] items-center justify-center px-2 py-4" aria-label={`Preview of ${count} ${count === 1 ? 'person' : 'people'} with ${photosPerPerson} ${photosPerPerson === 1 ? 'photo' : 'photos'} each`}>
+            <div style={{ width: fittedFrameWidth(layout, count, photosPerPerson, 'min(38dvh, 330px)') }}><FramePreview photos={previewPhotos} people={count} photosPerPerson={photosPerPerson} layout={layout} frameType={frameType} frameColor={frameColor} showDate={false} /></div>
+          </div>
+          <p className="mb-6 text-center text-xs text-[#756f66]">{count} {count === 1 ? 'person' : 'people'} · {photosPerPerson} {photosPerPerson === 1 ? 'photo' : 'photos'} each · {layouts.find(([key]) => key === layout)?.[1]}</p>
           <div className="mt-7"><span className="field-label">Arrange the frames</span><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} aria-pressed={layout === key} onClick={() => setLayout(key)} className={`min-h-12 rounded-xl border px-3 text-sm ${layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{label}</button>)}</div></div>
-          <div className="mt-7"><span className="field-label">Choose a frame</span><FrameTypePicker value={frameType} onChange={setFrameType} /></div>
+          <div className="mt-7"><span className="field-label">Choose a frame</span><FrameTypePicker value={frameType} onChange={setFrameType} layout={layout} people={count} photosPerPerson={photosPerPerson} photos={previewPhotos} /></div>
         </div>}
         {step === 3 && <div><h1 className="serif text-4xl sm:text-5xl">Set the moment.</h1><p className="mb-7 mt-2 text-[#6f685f]">A tiny prompt helps everyone feel part of the same picture.</p>
           <label className="field-label" htmlFor="prompt">Today's prompt</label><textarea id="prompt" data-testid="input-prompt" className="input-paper mb-6 min-h-24 resize-y" maxLength={120} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
@@ -304,7 +304,7 @@ export function CreateBoothPage() {
         </div>}
         {createBooth.isError && <div className="mt-5"><ErrorNote message={getError(createBooth.error)} /></div>}
         {claimSlot.isError && <div className="mt-5"><ErrorNote message={getError(claimSlot.error)} /></div>}
-        <div className="mt-8 flex justify-end">{step < 3 ? <Button disabled={step === 1 && (!name.trim() || !names[0]?.trim())} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || !names[0]?.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
+        <div className="mt-8 flex justify-center">{step < 3 ? <Button disabled={step === 1 && (!name.trim() || !names[0]?.trim())} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || !names[0]?.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
       </Panel>
     </div>
   </Shell>;
@@ -335,7 +335,7 @@ export function BoothManagePage() {
       navigate('/');
     } });
   };
-  return <Shell><TopBar right={<span className="eyebrow">Your private booth</span>} /><div className="mx-auto max-w-[820px] py-8 sm:py-12">
+  return <Shell><div className="mx-auto max-w-[820px] py-8 sm:py-12">
     <button onClick={() => navigate('/')} className="button-quiet mb-6 inline-flex items-center gap-2 !px-0"><ArrowLeft size={16} /> Home</button>
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
       <div className="mb-7"><p className="eyebrow">A little place for your people</p><h1 className="serif mt-2 text-5xl sm:text-6xl">{booth.name}</h1>{booth.subtitle && <p className="mt-2 text-[#6f685f]">{booth.subtitle}</p>}</div>
@@ -386,7 +386,7 @@ export function JoinPage() {
       navigate(`/join/${privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
     } });
   };
-  return <Shell><TopBar right={<span className="eyebrow">You’re invited</span>} /><div className="mx-auto max-w-[620px] py-9 sm:py-14">
+  return <Shell><div className="mx-auto max-w-[620px] py-9 sm:py-14">
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
       <div className="rounded-[28px] bg-[#292723] px-6 py-8 text-center text-[#fffdf8] sm:px-10"><p className="eyebrow text-[#cfc8be]">{booth.occasion || 'A private photobooth'}</p><h1 className="serif mt-3 text-4xl sm:text-5xl">{booth.name}</h1>{booth.subtitle && <p className="mb-0 mt-3 text-[#ded7ce]">{booth.subtitle}</p>}<p className="mb-0 mt-5 text-xs text-[#cfc8be]">{booth.participantCount} FRAMES · ABOUT A MINUTE EACH</p></div>
       <Panel className="mt-5"><span className="eyebrow">A little prompt</span><blockquote className="serif mb-0 mt-2 rounded-2xl bg-[#f1e5dc] p-5 text-2xl">{booth.prompt || defaultPrompt}</blockquote>
@@ -587,12 +587,12 @@ export function CapturePage() {
       else setIsFinalizing(false);
     } catch (reason) { setError(getError(reason)); setIsFinalizing(false); }
   };
-  if (!slotId || !token) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
-  if (boothQuery.isLoading) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
-  if (allMySlotsSubmitted && !isSaving) return <Shell><TopBar /><div className="mx-auto max-w-[720px] py-10"><Panel className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-7" style={{ width: fittedFrameWidth('classic-strip', 1, mySlots.length, '48dvh') }}><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="classic-strip" people={1} photosPerPerson={mySlots.length} frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-7 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></Panel></div></Shell>;
+  if (!slotId || !token) return <Shell><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
+  if (boothQuery.isLoading) return <Shell><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
+  if (allMySlotsSubmitted && !isSaving) return <Shell><div className="mx-auto max-w-[720px] py-6"><div className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-4" style={{ width: fittedFrameWidth('classic-strip', 1, mySlots.length, 'min(35dvh, 390px)') }}><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="classic-strip" people={1} photosPerPerson={mySlots.length} frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-4 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></div></div></Shell>;
   const photoBusy = isSaving || isRemoving || isFinalizing;
-  return <main className={`min-h-[100dvh] bg-[#292723] px-4 text-[#fffdf8] ${totalPhotos > 1 ? 'pb-[220px]' : 'pb-10'}`}>
-    <header className="mx-auto flex min-h-[66px] max-w-[720px] items-center justify-between"><a href={`/join/${privateToken}`} className="inline-flex min-h-11 items-center gap-2 text-sm text-[#ded7ce] no-underline"><ArrowLeft size={17} /> Invitation</a><span className="eyebrow text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && (allMySlotsSaved && reviewIndex === null ? ' · Ready to finish' : ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`)}</span></header>
+  return <main className={`min-h-[100dvh] bg-[#292723] px-4 pt-5 text-[#fffdf8] ${totalPhotos > 1 ? 'pb-[220px]' : 'pb-10'}`}>
+    <p className="mb-4 text-center text-xs text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && (allMySlotsSaved && reviewIndex === null ? ' · Ready to finish' : ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`)}</p>
     {reviewIndex !== null && mySlots[reviewIndex]?.claimStatus === 'staged' ? <div className="mx-auto max-w-[600px]">
       <div className="mb-5 text-center"><p className="eyebrow text-[#e8a99c]">Saved photo {reviewIndex + 1} of {totalPhotos}</p><h1 className="serif mb-1 mt-2 text-4xl">Keep this moment?</h1><p className="mb-0 text-sm text-[#d1c9be]">Only you can see it while you finish your photos.</p></div>
       <div className="relative mx-auto aspect-[4/5] max-h-[42dvh] overflow-hidden rounded-[26px] bg-[#47433d] sm:max-h-[58dvh]">{savedUrls[mySlots[reviewIndex].id] ? <img src={savedUrls[mySlots[reviewIndex].id]} alt={`Saved photo ${reviewIndex + 1}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><LoaderCircle className="animate-spin" /></div>}</div>
@@ -627,6 +627,7 @@ export function CapturePage() {
         <p className="mt-2 text-center text-xs text-[#bdb6ad]">{totalPhotos > 1 ? 'You can review or retake it before finishing your set.' : 'Visible only after every frame is confirmed.'}</p>
       </div>
     </div>}
+    <div className="mt-5 text-center"><a href={`/join/${privateToken}`} className="text-sm text-[#ded7ce] underline underline-offset-4">Back to invitation</a></div>
     {totalPhotos > 1 && <section className="fixed inset-x-3 bottom-3 z-30 mx-auto max-w-[600px] rounded-[24px] border border-white/20 bg-[#383530]/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur-md" aria-label="Saved photos"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="eyebrow mb-1 text-[#e8a99c]">Camera roll</p><p className="m-0 text-xs text-[#d1c9be]">{savedCount} of {totalPhotos} saved · tap to review</p></div>{savedCount > 0 && !allMySlotsSaved && <button type="button" className="text-xs text-[#e8a99c] underline underline-offset-4" onClick={() => { if (preview) retake(); setShowTrayOverview(true); }}>View all</button>}</div><div className="flex gap-3 overflow-x-auto pb-1">{mySlots.map((item, index) => <button key={item.id} type="button" aria-label={item.claimStatus === 'staged' ? `Review saved photo ${index + 1}` : item.claimStatus === 'submitted' ? `Photo ${index + 1} finalized` : `Take photo ${index + 1}`} aria-pressed={reviewIndex === index} className={`relative aspect-[4/5] w-[60px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#47433d] sm:w-[76px] ${reviewIndex === index ? 'border-[#E5786A]' : 'border-white/25'}`} disabled={photoBusy || item.claimStatus === 'submitted'} onClick={() => { if (preview) retake(); setError(''); if (item.claimStatus === 'staged') { setReviewIndex(index); setShowTrayOverview(false); } else { setReviewIndex(null); setShowTrayOverview(false); } }}><span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px]">{index + 1}</span>{savedUrls[item.id] ? <img src={savedUrls[item.id]} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[11px] text-[#d1c9be]">{item.claimStatus === 'claimed' ? '+' : item.claimStatus === 'submitted' ? '✓' : '…'}</span>}</button>)}</div></section>}
   </main>;
 }
@@ -735,16 +736,14 @@ export function RevealPage() {
     }
     canvas.toBlob((blob) => { if (!blob) return; const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${booth.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-photobooth.png`; link.click(); URL.revokeObjectURL(url); },'image/png');
   };
-  if (boothId && !user) return <Shell><TopBar /><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate(`/login?next=${encodeURIComponent(`/archive/${boothId}/reveal`)}`)}>Sign in</Button></Panel></div></Shell>;
-  if ((privateToken ? query.isLoading : archiveLoading) || !booth) return <Shell dark><TopBar dark /><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={privateToken ? query.error : archiveError} retry={() => privateToken ? void query.refetch() : navigate('/archive')} /></div></Shell>;
-  if (!booth.revealAvailable) return <Shell><TopBar /><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos are kept private until every frame is confirmed and the reveal time arrives.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
-  return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-10 text-[#fffdf8]">
-    <header className="mx-auto flex min-h-[68px] max-w-[840px] items-center justify-between"><button className="inline-flex min-h-11 items-center gap-2 text-sm text-[#fffdf8]" onClick={() => navigate('/')}><ArrowLeft size={17} /> Home</button><button className="button-quiet !text-[#cfc8be]" onClick={() => setSkip(true)}>{skip ? 'Ready' : 'Skip reveal'}</button></header>
-    <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-2 text-4xl sm:text-5xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-2 text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
-      {!skip && <div className="reveal-machine-slot" />}
-      <div className="keepsake-preview mx-auto mt-5" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(50dvh, 550px)') }}><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
-      <div className={`mx-auto mt-5 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-3 text-center ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}</div>
-      {shareMessage && <p className="mt-3 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}<p className={`mt-5 text-sm text-[#cfc8be] ${skip ? '' : 'reveal-copy'}`}>Different places. One photobooth.</p>
+  if (boothId && !user) return <Shell><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate(`/login?next=${encodeURIComponent(`/archive/${boothId}/reveal`)}`)}>Sign in</Button></Panel></div></Shell>;
+  if ((privateToken ? query.isLoading : archiveLoading) || !booth) return <Shell dark><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={privateToken ? query.error : archiveError} retry={() => privateToken ? void query.refetch() : navigate('/archive')} /></div></Shell>;
+  if (!booth.revealAvailable) return <Shell><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos are kept private until every frame is confirmed and the reveal time arrives.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
+  return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-6 pt-5 text-[#fffdf8]">
+    <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-1 text-3xl sm:text-4xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-1 text-sm text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
+      <div className="keepsake-preview mx-auto mt-3" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(30dvh, 350px)') }}><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
+      <div className={`mx-auto mt-4 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-2 text-center ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}<Button variant="quiet" className="!text-[#cfc8be]" onClick={() => navigate('/')}>Home</Button>{!skip && <Button variant="quiet" className="!text-[#cfc8be]" onClick={() => setSkip(true)}>Skip reveal</Button>}</div>
+      {shareMessage && <p className="mt-2 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}
     </div>
   </main>;
 }
@@ -766,9 +765,17 @@ const filters: Array<[CustomizationInput['filter'],string]> = [['original','Orig
 const frameColors = ['#FFFDF8','#292723','#E5786A','#A9C7BD','#AFC4E6','#EBCB8B'];
 const frameTypes: CustomizationInput['frameType'][] = ['clean','black','solid','polaroid','film','torn','pattern','retro','seasonal','whimsical','film-noir'];
 
-function FrameTypePicker({ value, onChange }: { value: CustomizationInput['frameType']; onChange: (value: CustomizationInput['frameType']) => void }) {
+function FrameTypePicker({ value, onChange, layout = 'classic-strip', people = 1, photosPerPerson = 2, photos = sampleTemplatePhotos(1, 2), frameColor }: {
+  value: CustomizationInput['frameType'];
+  onChange: (value: CustomizationInput['frameType']) => void;
+  layout?: string;
+  people?: number;
+  photosPerPerson?: number;
+  photos?: string[];
+  frameColor?: string;
+}) {
   return <div className="frame-type-picker" aria-label="Frame styles">{frameTypes.map((item) => <button key={item} type="button" aria-pressed={value === item} onClick={() => onChange(item)} className={`frame-type-option ${value === item ? 'is-selected' : ''}`}>
-    <span className="frame-option-preview"><FramePreview photos={['','']} layout="double" frameType={item} compact showDate={false} /></span>
+    <span className="frame-option-preview"><span className="frame-option-artwork" style={{ width: fittedFrameWidth(layout, people, photosPerPerson, '72px') }}><FramePreview photos={photos} layout={layout} people={people} photosPerPerson={photosPerPerson} frameType={item} frameColor={item === 'solid' && (frameColor ?? '#FFFDF8').toLowerCase() === '#fffdf8' ? '#E5786A' : frameColor ?? '#FFFDF8'} compact showDate={false} /></span></span>
     <span>{item === 'film-noir' ? 'Film Noir' : item}</span>
   </button>)}</div>;
 }
@@ -836,16 +843,16 @@ export function EditorPage() {
     const nextY = Math.max(.03,Math.min(.97,drag.originY+(event.clientY-drag.y)/drag.rect.height));
     setCustom((value) => value ? { ...value, objects: value.objects.map((object) => object.id === drag.id ? { ...object, x: nextX, y: nextY } : object) } : value);
   };
-  if (query.isLoading || !booth || !custom) return <Shell><TopBar /><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
-  if (!booth.revealAvailable) return <Shell><TopBar /><div className="mx-auto max-w-xl py-12"><Panel><h1 className="serif text-3xl">The keepsake will be ready soon.</h1><p>Customization opens once the full photobooth is revealed.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
+  if (query.isLoading || !booth || !custom) return <Shell><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
+  if (!booth.revealAvailable) return <Shell><div className="mx-auto max-w-xl py-12"><Panel><h1 className="serif text-3xl">The keepsake will be ready soon.</h1><p>Customization opens once the full photobooth is revealed.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
   const colors = custom.frameColor;
   const undo = () => { const previous = history.at(-1); if (!previous) return; setRedoHistory((v) => [...v,custom]); setCustom(previous); setHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
   const redo = () => { const next = redoHistory.at(-1); if (!next) return; setHistory((v) => [...v,custom]); setCustom(next); setRedoHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
   return <Shell>
     <div className="mx-auto max-w-[1100px] py-6"><div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">A keepsake, made yours</p><h1 className="serif mt-1 text-4xl">Customize the reveal</h1></div><div className="flex items-center gap-2"><button aria-label="Undo" className="button-quiet" disabled={!history.length} onClick={undo}>Undo</button><button aria-label="Redo" className="button-quiet" disabled={!redoHistory.length} onClick={redo}>Redo</button><Button disabled={!creatorToken || save.isPending} onClick={() => void saveAndExit()}>{save.isPending ? 'Saving…' : dirty ? 'Save & done' : 'Done'}</Button></div></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(340px,.9fr)]">
-        <section className="flex min-h-[550px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:p-8">
-          <div className="relative mx-auto" style={{ width: fittedFrameWidth(custom.layout, booth.participantCount, booth.photosPerPerson, 'min(58dvh, 620px)') }} ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
+        <section className="flex min-h-[320px] items-center justify-center p-4 sm:min-h-[440px] sm:p-8">
+          <div className="relative mx-auto" style={{ width: fittedFrameWidth(custom.layout, booth.participantCount, booth.photosPerPerson, 'min(44dvh, 460px)') }} ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
             <div className="keepsake-preview"><FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} /></div>
             {custom.objects.map((object) => <button key={object.id} className="absolute z-10 cursor-move touch-none rounded-md border border-dashed border-[#e5786a] bg-[#fffdf8]/75 px-2 py-1 text-sm" style={{ left: `${object.x*100}%`, top: `${object.y*100}%`, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)`, color: object.color }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const rect = event.currentTarget.parentElement?.getBoundingClientRect(); if (rect) { setHistory((items) => [...items.slice(-19), custom]); setRedoHistory([]); dragRef.current = { id: object.id, x: event.clientX, y: event.clientY, originX: object.x, originY: object.y, rect }; } }} onPointerMove={moveObject} onPointerUp={() => { dragRef.current = null; editRevision.current += 1; setDirty(true); }}>{object.kind === 'sticker' && stickerImageMap[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-10 object-contain" /> : object.label}</button>)}
           </div>
@@ -853,7 +860,7 @@ export function EditorPage() {
         <section className="paper-card rounded-[22px] p-4 sm:p-6">
           <div role="tablist" aria-label="Customization tools" className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[#f0ebe3] p-1">{(['Layout','Frame','Filter','Stickers','Text'] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 flex-1 rounded-lg px-2 text-xs font-semibold sm:text-sm ${tab === item ? 'bg-[#fffdf8] shadow-sm' : 'text-[#756f66]'}`}>{item}</button>)}</div>
           {tab === 'Layout' && <div><h2 className="serif text-2xl">Arrange the moments</h2><p className="text-sm text-[#6f685f]">Changing the layout keeps every caption and decoration.</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} onClick={() => update({ layout: key as CustomizationInput['layout'] })} aria-pressed={custom.layout === key} className={`min-h-12 rounded-xl border p-2 text-sm ${custom.layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5]'}`}>{label}</button>)}</div></div>}
-          {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><FrameTypePicker value={custom.frameType} onChange={(frameType) => update({ frameType })} /><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
+          {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><FrameTypePicker value={custom.frameType} onChange={(frameType) => update({ frameType, ...(frameType === 'solid' && custom.frameColor.toLowerCase() === '#fffdf8' ? { frameColor: '#E5786A' } : {}) })} layout={custom.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} photos={booth.slots.map((slot) => slot.photoUrl ?? '')} frameColor={custom.frameColor} /><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
           {tab === 'Filter' && <div><h2 className="serif text-2xl">A little atmosphere</h2><div className="mt-4 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={custom.filter === value} onClick={() => update({ filter: value })} className={`min-h-[76px] rounded-xl border p-2 text-center ${custom.filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-2 block h-8 w-11 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div></div>}
           {tab === 'Stickers' && <div><h2 className="serif text-2xl">Add a tiny flourish</h2><p className="text-sm text-[#6f685f]">Pick one, then drag it anywhere on the paper.</p>
             <div className="grid grid-cols-2 gap-2">{[['✦','Little star'],['♥','Heart'],['✿','Bloom'],['⌁','Doodle'],['TAPE','Tape'],['✎','Note']].map(([symbol,label]) => <button key={label} onClick={() => addObject('sticker',symbol)} className="min-h-[56px] rounded-xl border border-[#d9d1c5] bg-[#fffdf8] text-sm"><span className="mr-2 text-lg text-[#e5786a]">{symbol}</span>{label}</button>)}</div>
@@ -890,8 +897,9 @@ export function CreatorStylePage() {
 
   useEffect(() => {
     if (booth) {
-      setFrameType((localStorage.getItem(pendingFrameKey(privateToken)) as CustomizationInput['frameType'] | null) ?? booth.customization?.frameType ?? 'clean');
-      setFrameColor(booth.customization?.frameColor ?? '#FFFDF8');
+      const pendingFrame = localStorage.getItem(pendingFrameKey(privateToken)) as CustomizationInput['frameType'] | null;
+      setFrameType(pendingFrame ?? booth.customization?.frameType ?? 'clean');
+      setFrameColor(pendingFrame === 'solid' ? '#E5786A' : booth.customization?.frameColor ?? '#FFFDF8');
       setFilter(booth.customization?.filter ?? 'original');
     }
   }, [booth]);
@@ -929,22 +937,22 @@ export function CreatorStylePage() {
     } catch { /* Error shown via save.isError */ }
   };
 
-  if (query.isLoading || !booth) return <Shell><TopBar /><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
-  if (!creatorToken) return <Shell><TopBar /><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Creator access needed.</h1><p className="text-[#6f685f]">Open this page on the device where you created the booth.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
+  if (query.isLoading || !booth) return <Shell><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
+  if (!creatorToken) return <Shell><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Creator access needed.</h1><p className="text-[#6f685f]">Open this page on the device where you created the booth.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
 
-  return <Shell><TopBar right={<span className="eyebrow">Style your booth</span>} />
+  return <Shell>
     <div className="mx-auto max-w-[1100px] py-6">
       <div className="mb-5"><p className="eyebrow">Almost there</p><h1 className="serif mt-1 text-4xl">Pick a look for your booth.</h1></div>
       <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(300px,.85fr)]">
-        <section className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-[26px] bg-[#e9e2d8] p-4 sm:min-h-[480px] sm:p-8">
-          <div className="text-center" style={{ width: fittedFrameWidth(booth.customization?.layout ?? booth.layout, booth.participantCount, booth.photosPerPerson, 'min(58dvh, 620px)') }}>
+        <section className="flex min-h-[320px] items-center justify-center p-4 sm:min-h-[480px] sm:p-8">
+          <div className="text-center" style={{ width: fittedFrameWidth(booth.customization?.layout ?? booth.layout, booth.participantCount, booth.photosPerPerson, 'min(44dvh, 460px)') }}>
             <div className="keepsake-preview"><FramePreview photos={photos} layout={booth.customization?.layout ?? booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} /></div>
           </div>
         </section>
         <section className="paper-card rounded-[22px] p-4 sm:p-6">
           <div>
             <h2 className="serif text-2xl">Frame style</h2>
-            <FrameTypePicker value={frameType} onChange={setFrameType} />
+            <FrameTypePicker value={frameType} onChange={(next) => { setFrameType(next); if (next === 'solid' && frameColor.toLowerCase() === '#fffdf8') setFrameColor('#E5786A'); }} layout={booth.customization?.layout ?? booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} photos={photos} frameColor={frameColor} />
           </div>
           <div className="mt-6">
             <p className="field-label">Paper color</p>
@@ -1018,7 +1026,7 @@ export function NotificationsPage() {
     setInstallPrompt(null);
   };
   const url = `${location.origin}/booth/${privateToken}`;
-  return <Shell><TopBar right={<span className="eyebrow">Notifications</span>} /><div className="mx-auto max-w-[650px] py-10 sm:py-14">
+  return <Shell><div className="mx-auto max-w-[650px] py-10 sm:py-14">
     {confirmed && <div className="mb-5 rounded-2xl border border-[#c3d9cf] bg-[#e6f0eb] p-4 text-sm text-[#435c50]"><strong>Your frame is safely tucked away.</strong> It won’t be seen until everyone has confirmed.</div>}
     <Panel><p className="eyebrow text-[#e5786a]">✦ keep the link close</p><h1 className="serif mt-2 text-4xl sm:text-5xl">Come back when the booth is ready.</h1><p className="mt-3 leading-7 text-[#6f685f]">You can keep the private link to view the keepsake. Sign in if you’d like to enable a notification on this device.</p>
       <div className="mt-6 rounded-2xl bg-[#f0ebe3] p-5"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full bg-[#dce8e3]"><Heart size={20} /></span><div><strong>Keep your private link</strong><p className="mb-0 text-sm text-[#6f685f]">Anyone with the link can see the booth when it’s ready.</p></div></div><div className="mt-4 flex flex-wrap gap-3"><CopyButton text={url}><Link2 size={16} /> Copy booth link</CopyButton><a className="button-secondary inline-flex items-center no-underline" href={url}>Open booth</a></div></div>

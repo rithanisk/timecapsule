@@ -35,11 +35,6 @@ function MobileNav() {
   return <nav className="mobile-nav" aria-label="Main navigation">{items.map(({ label, icon: Icon, path: target, featured }) => <button key={label} type="button" aria-label={label} aria-current={path === target ? 'page' : undefined} className={`mobile-nav-item ${featured ? 'mobile-nav-camera' : ''}`} onClick={() => navigate(target)}><Icon size={featured ? 24 : 20} strokeWidth={featured ? 2.2 : 1.8} /><span>{label}</span></button>)}</nav>;
 }
 
-export function TopBar({ right, dark = false }: { right?: ReactNode; dark?: boolean }) {
-  void right; void dark;
-  return null;
-}
-
 export function Button({ children, variant = 'primary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'quiet' }) {
   return <button className={`${variant === 'primary' ? 'button-primary' : variant === 'secondary' ? 'button-secondary' : 'button-quiet'} inline-flex items-center justify-center gap-2 ${className}`} {...props}>{children}</button>;
 }

@@ -32,3 +32,13 @@ export const sampleStripPhotos: Array<[string, string]> = [
   [streetFood, boardgameNight],
   [beachFriends, rooftopSparklers],
 ];
+
+// Keep preview photos grouped by person while the frame manifest determines
+// their actual positions. The first two match the reference photostrip.
+export function sampleTemplatePhotos(people: number, photosPerPerson: number): string[] {
+  return Array.from({ length: people * photosPerPerson }, (_, index) => {
+    const person = Math.floor(index / photosPerPerson);
+    const photo = index % photosPerPerson;
+    return sampleStripPhotos[(person + Math.floor(photo / 2) * people) % sampleStripPhotos.length][photo % 2];
+  });
+}
