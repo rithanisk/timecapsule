@@ -1,6 +1,7 @@
 import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { LogOut } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type BoothInput, type BoothState, type CanvasObject, type CustomizationInput,
@@ -13,7 +14,7 @@ import {
   saveBoothCustomization,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
+import { Brand, Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
 import { sampleStripPhotos, sampleTemplatePhotos } from '@/home-samples';
 import { useArchiveBooths } from '@/lib/archive';
@@ -96,27 +97,7 @@ function getError(error: unknown) {
   return 'Something went wrong. Please try again.';
 }
 
-export function HomePage() {
-  const [, navigate] = useLocation();
-  const { user, logout } = useAuth();
-  const [activeToken] = useState(() => localStorage.getItem(activeBoothKey) ?? '');
-  const query = useBooth(user ? activeToken : '');
-  const { entries: archived, selectedIds, ownedTokens } = useArchiveBooths();
-  const accountHero = user ? selectedIds.map((id) => archived.find((entry) => entry.id === id)).find(Boolean) : undefined;
-  const localBooth = user && query.data && !query.data.revealAvailable && Array.isArray(query.data.slots) && ownedTokens.includes(activeToken) ? query.data : undefined;
-  const booth = accountHero?.booth ?? localBooth;
-  const boothDestination = accountHero ? accountHero.token ? `/booth/${accountHero.token}/reveal` : `/archive/${accountHero.id}/reveal` : booth?.revealAvailable ? `/booth/${activeToken}/reveal` : `/booth/${activeToken}`;
-  const submitted = booth?.completedCount ?? 0;
-  const myBoothsQuery = useGetMyBooths({ query: { queryKey: [...getGetMyBoothsQueryKey(), user?.id], enabled: Boolean(user) } });
-  const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
-  const featured = user ? selectedIds.flatMap((id) => archived.filter((item) => item.id === id)) : [];
-  const heroTitle = user ? `Hi, ${user.displayName}!` : 'Welcome to your';
-  const heroSubtitle = booth
-    ? (booth.revealAvailable ? 'Everyone is here.' : `${submitted} of ${booth.participantCount} moments added`)
-    : user
-      ? 'Your timecapsules are waiting.'
-      : 'A private photobooth for the people you love. Take photos apart, reveal them together.';
-  const homeStrips = [
+const homeStrips = [
     { layout: 'horizontal', frameType: 'clean' },
     { layout: 'horizontal', frameType: 'retro' },
     { layout: 'vertical', frameType: 'film' },
@@ -127,42 +108,63 @@ export function HomePage() {
     { layout: 'vertical', frameType: 'clean' },
     { layout: 'vertical', frameType: 'black' },
     { layout: 'horizontal', frameType: 'solid' },
-    ...(booth?.revealAvailable && booth.slots.length > 20 ? [
-      { layout: 'horizontal', frameType: 'retro' },
-      { layout: 'horizontal', frameType: 'clean' },
-    ] : []),
-  ];
+];
+
+function HomeSampleStrip({ photos, layout, frameType }: { photos: string[]; layout: string; frameType: string }) {
+  return <div className={`photostrip relative photostrip-compact ${layout === 'vertical' ? 'layout-strip' : ''} frame-${frameType}`} style={{ backgroundColor: '#fffdf8' }}>
+    <div className={`photo-grid grid-cols-2 ${layout}`}>
+      {photos.map((photo, index) => <div key={index} className={`photo-cell tone-${index}`} style={{ backgroundImage: `url("${photo}")` }} />)}
+    </div>
+  </div>;
+}
+
+export function HomePage() {
+  const [, navigate] = useLocation();
+  const { user, logout } = useAuth();
+  const { entries: archived, selectedIds } = useArchiveBooths();
+  const myBoothsQuery = useGetMyBooths({ query: { queryKey: [...getGetMyBoothsQueryKey(), user?.id], enabled: Boolean(user) } });
+  const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
+  const featured = user ? selectedIds.flatMap((id) => archived.filter((item) => item.id === id)) : [];
   return <Shell>
+    <header className="flex min-h-[76px] items-center justify-between border-b border-[#d9d1c5]">
+      <Brand />
+      {user ? <span className="flex items-center gap-2 text-xs text-[#756f66]">Hi, {user.displayName}! <button type="button" onClick={() => void logout()} className="ml-1 inline-flex items-center gap-1 underline hover:opacity-70"><LogOut size={13} /> Sign out</button></span>
+        : <Link href="/login" className="text-xs font-medium text-[#292723] underline">Sign in</Link>}
+    </header>
     <section className="mx-auto max-w-[1100px] pb-8 pt-5 sm:pt-8">
-      <div className={`home-collage ${booth && booth.slots.length > 12 ? 'has-extra-strips' : ''} ${booth?.revealAvailable && booth.slots.length > 20 ? 'has-desktop-extra' : ''}`} aria-label={booth ? `${submitted} of ${booth.participantCount} frames confirmed` : 'Welcome to your timecapsule'}>
+      <div className="home-collage" aria-label="Welcome to your timecapsule">
         <div className="collage-center">
           <img className="collage-sticker collage-sticker-cherry" src={stickerCherry} alt="" />
           <img className="collage-sticker collage-sticker-flower" src={stickerFlower} alt="" />
           <img className="collage-sticker collage-sticker-bird" src={stickerBird} alt="" />
           <img className="collage-sticker collage-sticker-confetti" src={stickerConfetti} alt="" />
-          <h1 className="serif collage-heading">{user ? <>Hi, <span className="text-[#E5786A]">{user.displayName}</span>!</> : heroTitle}</h1>
-          {!user && !booth && <p className="serif collage-title">timecapsule!</p>}
-          <p className="collage-subtitle">{heroSubtitle}</p>
+          <h1 className="serif collage-heading">{user ? <>Hi, <span className="text-[#E5786A]">{user.displayName}</span>!</> : 'Welcome to your'}</h1>
+          {!user && <p className="serif collage-title">timecapsule!</p>}
+          <p className="collage-subtitle">{user ? 'Your timecapsules are waiting.' : 'A private photobooth for the people you love. Take photos apart, reveal them together.'}</p>
           <div className="collage-actions">
-            {booth
-              ? <><Button onClick={() => navigate(boothDestination)}>{booth.revealAvailable ? 'Open keepsake' : 'Open your booth'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/create')}>New booth</Button></>
-              : <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>}
+            <Button onClick={() => navigate('/create')}>Start a timecapsule <ArrowRight size={17} /></Button>
           </div>
           {user && <Link href="/archive" className="mt-3 text-sm font-semibold text-[#c76559] underline underline-offset-4">Browse your photostrips</Link>}
           {!user && <p className="collage-signin">
             <Link href="/login?next=%2Fcreate" className="font-medium text-[#292723] underline">Sign in</Link> to create and save a timecapsule.
           </p>}
-          {user && <button className="button-quiet mt-2 text-xs underline" onClick={() => void logout()}>Sign out</button>}
         </div>
         {homeStrips.map(({ layout, frameType }, index) => {
-          const featuredBooth = featured[index]?.booth;
-          const stripSlots = booth?.slots.slice(index * 2, index * 2 + 2) ?? [];
           const photos = sampleStripPhotos[index] ?? ['', ''];
-          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 && !stripSlots.length ? 'collage-mobile-extra' : ''}`} aria-hidden={!featuredBooth}>
-            {featuredBooth ? <FramePreview photos={featuredBooth.slots.map((slot) => slot.photoUrl ?? '')} layout={featuredBooth.customization.layout || featuredBooth.layout} people={featuredBooth.participantCount} photosPerPerson={featuredBooth.photosPerPerson} caption={featuredBooth.customization.caption} frameColor={featuredBooth.customization.frameColor} filter={featuredBooth.customization.filter} frameType={featuredBooth.customization.frameType} objects={featuredBooth.customization.objects} showDate={false} captionPosition={featuredBooth.customization.captionPosition} captionFont={featuredBooth.customization.captionFont} slotAdjustments={featuredBooth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact /> : <FramePreview photos={photos} layout={layout} compact frameType={frameType} people={1} photosPerPerson={2} />}
+          return <div key={index} className={`collage-strip collage-strip-${index} ${index >= 6 ? 'collage-mobile-extra' : ''}`} aria-hidden="true">
+            <HomeSampleStrip photos={photos} layout={layout} frameType={frameType} />
           </div>;
         })}
       </div>
+
+      {featured.length > 0 && <section className="mx-auto mt-10 max-w-[900px]" aria-labelledby="liked-photostrips-heading">
+        <h2 id="liked-photostrips-heading" className="serif mb-4 text-center text-2xl">Liked photostrips</h2>
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+          {featured.map((entry) => <Link key={entry.id} href={entry.token ? `/booth/${entry.token}/reveal` : `/archive/${entry.id}/reveal`} className="block min-w-0 no-underline" aria-label={`Open ${entry.booth.name}`}>
+            <FramePreview photos={entry.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={entry.booth.customization.layout || entry.booth.layout} people={entry.booth.participantCount} photosPerPerson={entry.booth.photosPerPerson} caption={entry.booth.customization.caption} frameColor={entry.booth.customization.frameColor} filter={entry.booth.customization.filter} frameType={entry.booth.customization.frameType} objects={entry.booth.customization.objects} showDate={false} captionPosition={entry.booth.customization.captionPosition} captionFont={entry.booth.customization.captionFont} slotAdjustments={entry.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact />
+          </Link>)}
+        </div>
+      </section>}
 
       {user && myBooths.length > 0 && <div className="mx-auto mt-10 max-w-[700px] text-left">
         <h2 className="serif mb-4 text-lg">Your booths</h2>
