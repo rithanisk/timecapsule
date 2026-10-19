@@ -11,7 +11,6 @@ import {
   BoothManagePage,
   HomePage,
   JoinPage,
-  NotificationsPage,
   RevealPage,
 } from '@/pages/timecapsule';
 import { LoginPage, RegisterPage } from '@/pages/auth';
@@ -66,7 +65,7 @@ function Router() {
         <Route path="/booth/:privateToken/reveal" component={RevealPage} />
         <Route path="/booth/:privateToken/style" component={BoothStatusRedirect} />
         <Route path="/booth/:privateToken/edit" component={BoothStatusRedirect} />
-        <Route path="/booth/:privateToken/notifications" component={NotificationsPage} />
+        <Route path="/booth/:privateToken/notifications" component={BoothStatusRedirect} />
         <Route path="/booth/:privateToken" component={BoothManagePage} />
         <Route component={NotFound} />
       </Switch>

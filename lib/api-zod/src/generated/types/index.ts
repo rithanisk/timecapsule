@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './accessTokenParameter';
 export * from './accountArchive';
 export * from './accountArchiveEntry';
 export * from './archiveHomeSelection';
@@ -48,9 +47,6 @@ export * from './healthStatus';
 export * from './loginInput';
 export * from './logoutResult';
 export * from './participantTokenParameter';
-export * from './pushSubscriptionInput';
-export * from './pushSubscriptionInputKeys';
-export * from './pushSubscriptionResult';
 export * from './registerInput';
 export * from './slotClaim';
 export * from './slotClaimInput';

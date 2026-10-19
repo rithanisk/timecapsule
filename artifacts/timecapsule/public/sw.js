@@ -57,39 +57,3 @@ self.addEventListener('fetch', (event) => {
     return response;
   })());
 });
-
-self.addEventListener('push', (event) => {
-  let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = { body: event.data ? event.data.text() : '' };
-  }
-
-  event.waitUntil(self.registration.showNotification(payload.title || 'Your Timecapsule is ready', {
-    body: payload.body || 'Your people are together in one photobooth.',
-    icon: '/brand/app-icon.svg',
-    badge: '/brand/app-icon.svg',
-    tag: payload.tag || 'timecapsule-ready',
-    renotify: false,
-    data: { url: payload.url || '/' },
-  }));
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil((async () => {
-    if ('clearAppBadge' in self.registration) {
-      await self.registration.clearAppBadge().catch(() => undefined);
-    }
-    const target = new URL(event.notification.data?.url || '/', self.registration.scope).href;
-    const openClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of openClients) {
-      if (client.url.startsWith(self.registration.scope)) {
-        await client.navigate(target);
-        return client.focus();
-      }
-    }
-    return self.clients.openWindow(target);
-  })());
-});

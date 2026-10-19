@@ -1,7 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runAuthMigrations } from "./lib/runMigrations";
-import { processReadyBoothNotifications } from "./lib/pushNotifications";
 
 const rawPort = process.env["PORT"];
 
@@ -29,14 +28,3 @@ void runAuthMigrations()
     });
   })
   .catch(() => process.exit(1));
-
-const pushSchedule = setInterval(() => {
-  void processReadyBoothNotifications().catch((error) => {
-    logger.error({ err: error }, "Scheduled booth-ready notification scan failed");
-  });
-}, 60_000);
-pushSchedule.unref();
-
-void processReadyBoothNotifications().catch((error) => {
-  logger.error({ err: error }, "Initial booth-ready notification scan failed");
-});

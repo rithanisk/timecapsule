@@ -163,6 +163,7 @@ router.get("/auth/booths", async (req, res): Promise<void> => {
         name: boothsTable.name,
         status: boothsTable.status,
         participantCount: boothsTable.participantCount,
+        photosPerPerson: boothsTable.photosPerPerson,
         createdAt: boothsTable.createdAt,
       })
       .from(boothsTable)
@@ -171,6 +172,7 @@ router.get("/auth/booths", async (req, res): Promise<void> => {
       GetMyBoothsResponse.parse(
         booths.map((b) => ({
           ...b,
+          participantCount: Math.ceil(b.participantCount / Math.max(1, b.photosPerPerson)),
           createdAt: b.createdAt.toISOString(),
         })),
       ),

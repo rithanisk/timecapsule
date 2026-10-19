@@ -18,7 +18,7 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Create a private booth
+ * @summary Create a private booth (sign-in required)
  */
 export const createBoothBodyNameMax = 50;
 
@@ -254,7 +254,7 @@ export const GetBoothResponse = zod.object({
 
 
 /**
- * @summary Delete a booth
+ * @summary Delete a booth (sign-in required)
  */
 export const deleteBoothPathPrivateTokenMin = 32;
 
@@ -276,7 +276,7 @@ export const DeleteBoothResponse = zod.void()
 
 
 /**
- * @summary Claim an available participant slot
+ * @summary Claim an available participant slot (sign-in required)
  */
 export const claimBoothSlotPathPrivateTokenMin = 32;
 
@@ -303,7 +303,7 @@ export const ClaimBoothSlotResponse = zod.object({
 
 
 /**
- * @summary Request a private upload URL for a confirmed candidate frame
+ * @summary Request a private upload URL for a confirmed candidate frame (sign-in required)
  */
 export const requestFrameUploadPathPrivateTokenMin = 32;
 
@@ -341,7 +341,7 @@ export const RequestFrameUploadResponse = zod.object({
 
 
 /**
- * @summary Confirm an uploaded frame
+ * @summary Confirm an uploaded frame (sign-in required)
  */
 export const confirmBoothFramePathPrivateTokenMin = 32;
 
@@ -489,7 +489,7 @@ export const GetDraftPhotoResponse = zod.unknown()
 
 
 /**
- * @summary Delete a saved photo before finalizing the participant's set
+ * @summary Delete a saved photo before finalizing the participant's set (sign-in required)
  */
 export const deleteDraftPhotoPathPrivateTokenMin = 32;
 
@@ -512,7 +512,7 @@ export const DeleteDraftPhotoResponse = zod.void()
 
 
 /**
- * @summary Finalize every saved photo for one participant
+ * @summary Finalize every saved photo for one participant (sign-in required)
  */
 export const finalizeParticipantPhotosPathPrivateTokenMin = 32;
 
@@ -624,7 +624,7 @@ export const FinalizeParticipantPhotosResponse = zod.object({
 
 
 /**
- * @summary Save a booth's reveal artifact customization
+ * @summary Save a booth's reveal artifact customization (sign-in required)
  */
 export const saveBoothCustomizationPathPrivateTokenMin = 32;
 
@@ -770,50 +770,6 @@ export const SaveBoothCustomizationResponse = zod.object({
   "panY": zod.number(),
   "scale": zod.number().min(1).max(saveBoothCustomizationResponseSlotAdjustmentsItemScaleMax)
 })).optional()
-})
-
-
-/**
- * @summary Save a user-initiated booth-ready push subscription
- */
-export const subscribeToBoothReadyPathPrivateTokenMin = 32;
-
-
-
-export const SubscribeToBoothReadyParams = zod.object({
-  "privateToken": zod.coerce.string().min(subscribeToBoothReadyPathPrivateTokenMin)
-})
-
-export const subscribeToBoothReadyHeaderXAccessTokenMin = 32;
-
-
-
-export const SubscribeToBoothReadyHeader = zod.object({
-  "X-Access-Token": zod.string().min(subscribeToBoothReadyHeaderXAccessTokenMin)
-})
-
-export const subscribeToBoothReadyBodyEndpointMax = 2048;
-
-export const subscribeToBoothReadyBodyKeysP256dhMin = 16;
-export const subscribeToBoothReadyBodyKeysP256dhMax = 256;
-
-export const subscribeToBoothReadyBodyKeysAuthMin = 8;
-export const subscribeToBoothReadyBodyKeysAuthMax = 128;
-
-
-
-export const SubscribeToBoothReadyBody = zod.object({
-  "endpoint": zod.string().url().max(subscribeToBoothReadyBodyEndpointMax),
-  "expirationTime": zod.number().nullish(),
-  "keys": zod.object({
-  "p256dh": zod.string().min(subscribeToBoothReadyBodyKeysP256dhMin).max(subscribeToBoothReadyBodyKeysP256dhMax),
-  "auth": zod.string().min(subscribeToBoothReadyBodyKeysAuthMin).max(subscribeToBoothReadyBodyKeysAuthMax)
-})
-})
-
-export const SubscribeToBoothReadyResponse = zod.object({
-  "enabled": zod.boolean(),
-  "message": zod.string()
 })
 
 

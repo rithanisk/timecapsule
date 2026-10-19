@@ -5,12 +5,11 @@ import { LogOut } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type BoothCreated, type BoothInput, type BoothState, type CustomizationInput,
-  type FrameConfirmInput, type FrameUploadInput, type PushSubscriptionInput, type SlotClaimInput,
+  type FrameConfirmInput, type FrameUploadInput, type SlotClaimInput,
 } from '@workspace/api-client-react';
 import {
   getGetBoothQueryKey, getGetMyBoothsQueryKey, useClaimBoothSlot, useConfirmBoothFrame, useCreateBooth,
   useDeleteBooth, useGetBooth, useGetMyBooths, useRequestFrameUpload,
-  useSubscribeToBoothReady,
   saveBoothCustomization,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -68,17 +67,6 @@ const participantKey = (token: string, slotId: string) => `tc-participant:${toke
 const participantPrefix = (token: string) => `tc-participant:${token}:`;
 const confirmedKey = (token: string, slotId: string) => `tc-confirmed:${token}:${slotId}`;
 const activeBoothKey = 'tc-active-booth';
-
-function findAccessToken(privateToken: string) {
-  const creator = localStorage.getItem(creatorKey(privateToken));
-  if (creator) return creator;
-  const prefix = participantPrefix(privateToken);
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (key?.startsWith(prefix)) return localStorage.getItem(key) ?? '';
-  }
-  return '';
-}
 
 function useBooth(privateToken: string) {
   useEffect(() => {
@@ -348,7 +336,7 @@ export function BoothManagePage() {
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
       <div className="mb-7"><p className="eyebrow">A little place for your people</p><h1 className="serif mt-2 text-5xl sm:text-6xl">{booth.name}</h1>{booth.subtitle && <p className="mt-2 text-[#6f685f]">{booth.subtitle}</p>}</div>
       {booth.revealAvailable ? <div className="mb-7 rounded-2xl border border-[#c2d9cf] bg-[#e6f0eb] p-5 text-center"><strong className="serif text-2xl">Everyone’s done. Your photobooth is ready.</strong><p className="mt-1 text-sm text-[#586d63]">The frames are together at last.</p><Button className="mt-4" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>View final photobooth <ArrowRight size={17} /></Button></div> : <div className="mb-7"><h2 className="serif text-3xl">{finalizedPeople === 0 ? 'The first person is still to come.' : `${personCount - finalizedPeople} ${personCount - finalizedPeople === 1 ? 'person' : 'people'} left to finalize.`}</h2><p className="mt-1 text-[#6f685f]">Photos stay tucked away until everyone is in.</p></div>}
-      <Panel><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><span className="eyebrow">The little roll call</span><p className="mb-0 mt-1 font-semibold">{finalizedPeople} of {personCount} people finalized</p></div><ProgressDots total={personCount} complete={finalizedPeople} noun="people" /></div><SlotList slots={booth.slots} photosPerPerson={booth.photosPerPerson} /><div className="mt-6 flex flex-wrap gap-3"><CopyButton text={inviteUrl}><Link2 size={16} /> Copy invitation link</CopyButton><Button variant="secondary" onClick={() => { const text = `A photobooth for us: ${inviteUrl}`; if (navigator.share) void navigator.share({ title: booth.name, text, url: inviteUrl }); else void navigator.clipboard.writeText(text); }}><Share2 size={16} /> Share invite</Button><Button variant="quiet" onClick={() => navigate(`/booth/${privateToken}/notifications`)}>Gentle reminders</Button></div></Panel>
+      <Panel><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><span className="eyebrow">The little roll call</span><p className="mb-0 mt-1 font-semibold">{finalizedPeople} of {personCount} people finalized</p></div><ProgressDots total={personCount} complete={finalizedPeople} noun="people" /></div><SlotList slots={booth.slots} photosPerPerson={booth.photosPerPerson} /><div className="mt-6 flex flex-wrap gap-3"><CopyButton text={inviteUrl}><Link2 size={16} /> Copy invitation link</CopyButton><Button variant="secondary" onClick={() => { const text = `A photobooth for us: ${inviteUrl}`; if (navigator.share) void navigator.share({ title: booth.name, text, url: inviteUrl }); else void navigator.clipboard.writeText(text); }}><Share2 size={16} /> Share invite</Button></div></Panel>
       {creatorToken && <div className="mt-4 flex flex-wrap gap-2"><Button variant="quiet" disabled={deleteBooth.isPending} onClick={deleteIt}><Trash2 size={16} /> Delete booth</Button></div>}
       {deleteBooth.isError && <div className="mt-4"><ErrorNote message={getError(deleteBooth.error)} /></div>}
     </>}
@@ -395,7 +383,7 @@ export function JoinPage() {
   };
   return <Shell><div className="mx-auto max-w-[620px] py-9 sm:py-14">
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
-      <div className="rounded-[28px] bg-[#292723] px-6 py-8 text-center text-[#fffdf8] sm:px-10"><p className="eyebrow text-[#cfc8be]">{booth.occasion || 'A private photobooth'}</p><h1 className="serif mt-3 text-4xl sm:text-5xl">{booth.name}</h1>{booth.subtitle && <p className="mb-0 mt-3 text-[#ded7ce]">{booth.subtitle}</p>}<p className="mb-0 mt-5 text-xs text-[#cfc8be]">{booth.participantCount} FRAMES · ABOUT A MINUTE EACH</p></div>
+      <div className="rounded-[28px] bg-[#292723] px-6 py-8 text-center text-[#fffdf8] sm:px-10"><p className="eyebrow text-[#cfc8be]">{booth.occasion || 'A private photobooth'}</p><h1 className="serif mt-3 text-4xl sm:text-5xl">{booth.name}</h1>{booth.subtitle && <p className="mb-0 mt-3 text-[#ded7ce]">{booth.subtitle}</p>}<p className="mb-0 mt-5 text-xs text-[#cfc8be]">{booth.slots.length} FRAMES · ABOUT A MINUTE EACH</p></div>
       <Panel className="mt-5"><span className="eyebrow">A little prompt</span><blockquote className="serif mb-0 mt-2 rounded-2xl bg-[#f1e5dc] p-5 text-2xl">{booth.prompt || defaultPrompt}</blockquote>
         {booth.revealAvailable ? <div className="mt-5 rounded-xl bg-[#e6f0eb] p-4 text-sm">This booth is ready to open. <button className="underline" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>See the finished keepsake</button></div> : <>
           <h2 className="serif mb-1 mt-7 text-3xl">Choose your spot.</h2><p className="mb-5 text-sm text-[#6f685f]">Sign in to add your {booth.photosPerPerson === 1 ? 'photo' : `${booth.photosPerPerson} photos`}. Your photos stay private until everyone’s ready.</p>
@@ -781,71 +769,4 @@ function FrameTypePicker({ value, onChange, layout = 'classic-strip', people = 1
     <span className="frame-option-preview"><span className="frame-option-artwork" style={{ width: fittedFrameWidth(layout, people, photosPerPerson, '72px') }}><FramePreview photos={photos} layout={layout} people={people} photosPerPerson={photosPerPerson} frameType={item} frameColor={item === 'solid' && (frameColor ?? '#FFFDF8').toLowerCase() === '#fffdf8' ? '#E5786A' : frameColor ?? '#FFFDF8'} compact showDate={false} /></span></span>
     <span>{item === 'film-noir' ? 'Film Noir' : item}</span>
   </button>)}</div>;
-}
-
-export function NotificationsPage() {
-  const { privateToken = '' } = useParams<{privateToken:string}>();
-  const [, navigate] = useLocation();
-  const { user } = useAuth();
-  const query = useBooth(privateToken);
-  const confirmed = new URLSearchParams(location.search).get('confirmed') === '1' || Object.keys(localStorage).some((key) => key.startsWith(`tc-confirmed:${privateToken}:`) && localStorage.getItem(key) === 'true');
-  const creatorToken = localStorage.getItem(creatorKey(privateToken)) ?? '';
-  const accessToken = useMemo(() => findAccessToken(privateToken), [privateToken]);
-  const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
-  const pushSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && Boolean(vapidKey);
-  const canOptIn = confirmed || (Boolean(creatorToken) && (query.data?.completedCount ?? 0) > 0);
-  const subscribeToReady = useSubscribeToBoothReady({ request: { headers: { 'X-Access-Token': accessToken } } });
-  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
-  const [status, setStatus] = useState('');
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<(Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }) | null>(null);
-  useEffect(() => {
-    const listener = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> });
-    };
-    window.addEventListener('beforeinstallprompt', listener);
-    return () => { window.removeEventListener('beforeinstallprompt', listener); };
-  }, []);
-  const setup = async () => {
-    if (!user) { navigate(`/login?next=${encodeURIComponent(`/booth/${privateToken}/notifications`)}`); return; }
-    if (!canOptIn) { setStatus('Confirm a frame first. The private link remains available at any time.'); return; }
-    if (!pushSupported || !vapidKey || !accessToken) { setStatus('Push setup is not available on this browser or device. Keep the private link so you can return.'); return; }
-    try {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result !== 'granted') { setStatus('No problem. Keep the private link so you can return.'); return; }
-      const ready = await navigator.serviceWorker.ready;
-      const existing = await ready.pushManager.getSubscription();
-      const normalizedKey = vapidKey.replace(/-/g, '+').replace(/_/g, '/');
-      const paddedKey = normalizedKey + '='.repeat((4 - normalizedKey.length % 4) % 4);
-      const applicationServerKey = Uint8Array.from(window.atob(paddedKey), (char) => char.charCodeAt(0));
-      const subscription = existing ?? await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
-      const keys = subscription.toJSON().keys;
-      if (!keys?.p256dh || !keys.auth) throw new Error('This browser did not provide a secure push subscription.');
-      const data: PushSubscriptionInput = { endpoint: subscription.endpoint, expirationTime: subscription.expirationTime, keys: { p256dh: keys.p256dh, auth: keys.auth } };
-      const saved = await subscribeToReady.mutateAsync({ privateToken, data });
-      setIsSubscribed(saved.enabled);
-      setStatus(saved.message || 'You’re set. Keep the private link nearby as a fallback.');
-    } catch (reason) {
-      setStatus(`${getError(reason)} Keep the private link so you can return.`);
-    }
-  };
-  const install = async () => {
-    if (!installPrompt) { setStatus('On iPhone or iPad, open in Safari and choose Share, then Add to Home Screen.'); return; }
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setStatus(choice.outcome === 'accepted' ? 'Timecapsule was added to your Home Screen.' : 'No problem. The private link will always work.');
-    setInstallPrompt(null);
-  };
-  const url = `${location.origin}/booth/${privateToken}`;
-  return <Shell><div className="mx-auto max-w-[650px] py-10 sm:py-14">
-    {confirmed && <div className="mb-5 rounded-2xl border border-[#c3d9cf] bg-[#e6f0eb] p-4 text-sm text-[#435c50]"><strong>Your frame is safely tucked away.</strong> It won’t be seen until everyone has confirmed.</div>}
-    <Panel><p className="eyebrow text-[#e5786a]">✦ keep the link close</p><h1 className="serif mt-2 text-4xl sm:text-5xl">Come back when the booth is ready.</h1><p className="mt-3 leading-7 text-[#6f685f]">You can keep the private link to view the keepsake. Sign in if you’d like to enable a notification on this device.</p>
-      <div className="mt-6 rounded-2xl bg-[#f0ebe3] p-5"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full bg-[#dce8e3]"><Heart size={20} /></span><div><strong>Keep your private link</strong><p className="mb-0 text-sm text-[#6f685f]">Anyone with the link can see the booth when it’s ready.</p></div></div><div className="mt-4 flex flex-wrap gap-3"><CopyButton text={url}><Link2 size={16} /> Copy booth link</CopyButton><a className="button-secondary inline-flex items-center no-underline" href={url}>Open booth</a></div></div>
-      <div className="mt-5 rounded-2xl border border-[#e2dbd1] p-5"><h2 className="serif text-2xl">A gentle nudge on this device</h2><p className="text-sm leading-6 text-[#6f685f]">Notifications are optional. We’ll only ask after you choose, and only once a frame is confirmed. The private link always works as a fallback.</p><Button variant="secondary" disabled={Boolean(user) && (!canOptIn || !pushSupported || !accessToken || isSubscribed || subscribeToReady.isPending)} onClick={() => void setup()}>{!user ? 'Sign in to enable notifications' : subscribeToReady.isPending ? 'Setting up…' : isSubscribed ? 'Notifications set up' : !pushSupported ? 'Use the private link instead' : !canOptIn ? 'Available after frame confirmation' : 'Enable notifications'}</Button>{!canOptIn && <p className="mt-2 text-xs text-[#6f685f]">Finish your frame first. You can choose notifications after it is safely confirmed.</p>}{!pushSupported && <p className="mt-2 text-xs text-[#6f685f]">This browser needs service worker, push, notification support, and a configured public key. Save the private link instead.</p>}{status && <p role="status" className="mt-3 text-sm text-[#6f685f]">{status}</p>}{permission === 'denied' && <p className="mt-2 text-xs text-[#6f685f]">Your browser has notifications blocked. The private link works just as well.</p>}</div>
-      <details className="mt-4 rounded-xl border border-[#e2dbd1] p-4"><summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Add this booth to your Home Screen</summary><p className="mb-3 text-sm leading-6 text-[#6f685f]">On iPhone or iPad, open this link in Safari, tap Share, then choose “Add to Home Screen.” On Android, open the browser menu and choose “Install app” or “Add to Home screen.”</p><Button variant="secondary" onClick={() => void install()}>{installPrompt ? 'Install Timecapsule' : 'Show install instructions'}</Button></details>
-      {query.data?.revealAvailable && <a className="button-primary mt-6 inline-flex items-center no-underline" href={`/booth/${privateToken}/reveal`}>See the finished keepsake <ArrowRight size={17} /></a>}
-    </Panel>
-  </div></Shell>;
 }

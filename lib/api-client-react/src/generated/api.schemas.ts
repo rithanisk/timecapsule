@@ -390,32 +390,6 @@ export interface FrameConfirmInput {
   captureSource: FrameConfirmInputCaptureSource;
 }
 
-export type PushSubscriptionInputKeys = {
-  /**
-     * @minLength 16
-     * @maxLength 256
-     */
-  p256dh: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  auth: string;
-};
-
-export interface PushSubscriptionInput {
-  /** @maxLength 2048 */
-  endpoint: string;
-  /** @nullable */
-  expirationTime?: number | null;
-  keys: PushSubscriptionInputKeys;
-}
-
-export interface PushSubscriptionResult {
-  enabled: boolean;
-  message: string;
-}
-
 export interface RegisterInput {
   /** @maxLength 254 */
   email: string;
@@ -487,6 +461,4 @@ export interface AccountArchive {
 export type ParticipantTokenParameter = string;
 
 export type CreatorTokenParameter = string;
-
-export type AccessTokenParameter = string;
 

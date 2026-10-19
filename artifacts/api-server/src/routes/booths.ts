@@ -24,10 +24,6 @@ import {
   SaveBoothCustomizationHeader,
   SaveBoothCustomizationParams,
   SaveBoothCustomizationResponse,
-  SubscribeToBoothReadyBody,
-  SubscribeToBoothReadyHeader,
-  SubscribeToBoothReadyParams,
-  SubscribeToBoothReadyResponse,
 } from "@workspace/api-zod";
 import {
   boothSlotsTable,
@@ -36,11 +32,6 @@ import {
   db,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
-import {
-  pushIsConfigured,
-  sendBoothReadyNotifications,
-  storePushSubscription,
-} from "../lib/pushNotifications";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -94,21 +85,34 @@ export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<type
   const allSubmitted =
     slots.length === booth.participantCount &&
     slots.every((slot) => slot.claimStatus === "submitted" && Boolean(slot.mediaPath));
-  const revealAvailable = allSubmitted;
+  const photosPerPerson = Math.max(1, booth.photosPerPerson);
+  // Existing rows store the number of photo slots in participant_count.
+  const participantCount = Math.ceil(booth.participantCount / photosPerPerson);
+  const scheduledRevealReached =
+    booth.revealMode !== "scheduled" ||
+    (booth.scheduledRevealAt !== null && booth.scheduledRevealAt <= new Date());
+  const revealAvailable = allSubmitted && scheduledRevealReached;
+  const completedCount = Array.from({ length: participantCount }, (_, index) =>
+    slots.slice(index * photosPerPerson, (index + 1) * photosPerPerson),
+  ).filter(
+    (group) =>
+      group.length === photosPerPerson &&
+      group.every((slot) => slot.claimStatus === "submitted" && Boolean(slot.mediaPath)),
+  ).length;
   const state = {
     name: booth.name,
     subtitle: booth.subtitle,
     occasion: booth.occasion,
-    participantCount: booth.participantCount,
+    participantCount,
     mode: booth.mode,
     layout: booth.layout,
     prompt: booth.prompt,
     countdownSeconds: booth.countdownSeconds,
-    photosPerPerson: booth.photosPerPerson ?? 1,
+    photosPerPerson,
     revealMode: booth.revealMode,
     scheduledRevealAt: booth.scheduledRevealAt?.toISOString() ?? null,
     status: revealAvailable ? "revealed" : allSubmitted ? "complete" : "collecting",
-    completedCount: slots.filter((slot) => slot.claimStatus === "submitted").length,
+    completedCount,
     revealAvailable,
     slots: slots.map((slot) => ({
       id: slot.id,
@@ -167,7 +171,7 @@ router.post("/booths", async (req, res): Promise<void> => {
 
   try {
     const booth = await db.transaction(async (tx) => {
-      const boothValues: Record<string, unknown> = {
+      const boothValues: typeof boothsTable.$inferInsert = {
         privateTokenHash: tokenHash(privateToken),
         creatorTokenHash: tokenHash(creatorToken),
         name: input.name.trim(),
@@ -183,14 +187,13 @@ router.post("/booths", async (req, res): Promise<void> => {
         status: "collecting",
         customization,
         userId: req.session.userId,
+        photosPerPerson,
       };
-      // Only include photosPerPerson if > 1 to avoid errors on DBs without the column
-      if (photosPerPerson > 1) boothValues.photosPerPerson = photosPerPerson;
       const [createdBooth] = await tx
         .insert(boothsTable)
-        .values(boothValues as typeof boothsTable.$inferInsert)
+        .values(boothValues)
         .returning();
-      const slotValues: Array<{ boothId: string; position: number; displayName: string; claimStatus: string }> = [];
+      const slotValues: Array<typeof boothSlotsTable.$inferInsert> = [];
       let pos = 0;
       for (const displayName of input.slots) {
         for (let p = 0; p < photosPerPerson; p++) {
@@ -523,11 +526,6 @@ router.post(
         return;
       }
       const updatedState = await buildBoothState(updatedBooth, params.data.privateToken);
-      if (updatedState.revealAvailable) {
-        void sendBoothReadyNotifications(updatedBooth.id, updatedBooth.name).catch((error) =>
-          req.log.warn({ err: error }, "Could not send booth-ready notification"),
-        );
-      }
       res.json(
         ConfirmBoothFrameResponse.parse(updatedState),
       );
@@ -682,11 +680,6 @@ router.post("/booths/:privateToken/slots/:slotId/finalize", async (req, res): Pr
       return;
     }
     const state = await buildBoothState(updated, params.data.privateToken);
-    if (state.revealAvailable) {
-      void sendBoothReadyNotifications(updated.id, updated.name).catch((error) =>
-        req.log.warn({ err: error }, "Could not send booth-ready notification"),
-      );
-    }
     res.json(state);
   } catch (error) {
     req.log.error({ err: error }, "Failed to finalize participant photos");
@@ -744,88 +737,6 @@ router.get(
     } catch (error) {
       req.log.error({ err: error }, "Failed to serve revealed frame");
       res.status(404).json({ error: "This frame could not be loaded." });
-    }
-  },
-);
-
-router.post(
-  "/booths/:privateToken/push-subscriptions",
-  async (req, res): Promise<void> => {
-    const params = SubscribeToBoothReadyParams.safeParse(req.params);
-    const headers = SubscribeToBoothReadyHeader.safeParse({
-      "X-Access-Token": getHeader(req, "X-Access-Token"),
-    });
-    const body = SubscribeToBoothReadyBody.safeParse(req.body);
-    if (!params.success || !headers.success || !body.success) {
-      res.status(400).json({ error: "Notification subscription details are not valid." });
-      return;
-    }
-    if (!pushIsConfigured()) {
-      res.status(201).json(
-        SubscribeToBoothReadyResponse.parse({
-          enabled: false,
-          message: "Push delivery is not configured. Keep your private booth link to return.",
-        }),
-      );
-      return;
-    }
-
-    const booth = await findBooth(params.data.privateToken);
-    if (!booth) {
-      res.status(404).json({ error: "This booth is no longer available." });
-      return;
-    }
-    const accessToken = headers.data["X-Access-Token"];
-    let slotId: string | null = null;
-    let accessTokenHash: string | null = null;
-    if (tokenMatches(accessToken, booth.creatorTokenHash)) {
-      accessTokenHash = tokenHash(accessToken);
-    } else {
-      const boothSlots = await db
-        .select()
-        .from(boothSlotsTable)
-        .where(
-          and(
-            eq(boothSlotsTable.boothId, booth.id),
-            eq(boothSlotsTable.claimStatus, "submitted"),
-          ),
-        );
-      const participantSlot = boothSlots.find((candidate) =>
-        tokenMatches(accessToken, candidate.claimTokenHash),
-      );
-      if (participantSlot) {
-        slotId = participantSlot.id;
-        accessTokenHash = tokenHash(accessToken);
-      }
-    }
-    if (!accessTokenHash) {
-      res.status(403).json({ error: "This link cannot manage notifications for the booth." });
-      return;
-    }
-
-    try {
-      await storePushSubscription(
-        booth.id,
-        slotId,
-        accessTokenHash,
-        params.data.privateToken,
-        body.data,
-      );
-      const state = await buildBoothState(booth, params.data.privateToken);
-      if (state.revealAvailable) {
-        void sendBoothReadyNotifications(booth.id, booth.name).catch((error) =>
-          req.log.warn({ err: error }, "Could not send booth-ready notification"),
-        );
-      }
-      res.status(201).json(
-        SubscribeToBoothReadyResponse.parse({
-          enabled: true,
-          message: "You’ll get one notification when the booth is ready.",
-        }),
-      );
-    } catch (error) {
-      req.log.error({ err: error }, "Could not save push subscription");
-      res.status(500).json({ error: "Notifications could not be enabled. Keep your private link." });
     }
   },
 );

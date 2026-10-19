@@ -193,27 +193,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomizationInput"
-  /booths/{privateToken}/push-subscriptions:
-    parameters:
-      - $ref: "#/components/parameters/PrivateToken"
-      - $ref: "#/components/parameters/AccessToken"
-    post:
-      operationId: subscribeToBoothReady
-      tags: [booths]
-      summary: Save a user-initiated booth-ready push subscription (sign-in required)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PushSubscriptionInput"
-      responses:
-        "201":
-          description: Subscription saved or demo push mode reported
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PushSubscriptionResult"
   /auth/register:
     post:
       operationId: register
@@ -400,13 +379,6 @@ components:
       schema:
         type: string
         minLength: 32
-    AccessToken:
-      name: X-Access-Token
-      in: header
-      required: true
-      schema:
-        type: string
-        minLength: 32
   schemas:
     HealthStatus:
       type: object
@@ -548,24 +520,6 @@ components:
         rotation: { type: number, minimum: -360, maximum: 360 }
         color: { type: string, maxLength: 32 }
         zIndex: { type: integer, minimum: 0, maximum: 100 }
-    PushSubscriptionInput:
-      type: object
-      required: [endpoint, keys]
-      properties:
-        endpoint: { type: string, format: uri, maxLength: 2048 }
-        expirationTime: { type: ["number", "null"] }
-        keys:
-          type: object
-          required: [p256dh, auth]
-          properties:
-            p256dh: { type: string, minLength: 16, maxLength: 256 }
-            auth: { type: string, minLength: 8, maxLength: 128 }
-    PushSubscriptionResult:
-      type: object
-      required: [enabled, message]
-      properties:
-        enabled: { type: boolean }
-        message: { type: string }
     RegisterInput:
       type: object
       required: [email, password, displayName]

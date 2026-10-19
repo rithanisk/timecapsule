@@ -39,9 +39,6 @@ export async function runAuthMigrations() {
     await client.query(`
       ALTER TABLE booths ALTER COLUMN expires_at DROP NOT NULL
     `);
-    await client.query(`
-      UPDATE booths SET expires_at = NULL WHERE expires_at IS NOT NULL
-    `);
     logger.info("Auth migrations applied");
   } catch (err) {
     logger.error({ err }, "Database migration failed");

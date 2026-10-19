@@ -20,6 +20,8 @@ export const boothsTable = pgTable(
     name: text("name").notNull(),
     subtitle: text("subtitle").notNull().default(""),
     occasion: text("occasion").notNull().default(""),
+    // Legacy rows and current writes store photo-slot count here. The API
+    // derives the number of people by dividing by photosPerPerson.
     participantCount: integer("participant_count").notNull(),
     mode: text("mode").notNull(),
     layout: text("layout").notNull(),

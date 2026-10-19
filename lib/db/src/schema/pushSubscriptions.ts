@@ -8,6 +8,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { boothSlotsTable, boothsTable } from "./booths";
 
+// Legacy table retained in the schema so Replit does not propose dropping
+// existing production data. The application no longer uses push notifications.
 export const pushSubscriptionsTable = pgTable(
   "push_subscriptions",
   {

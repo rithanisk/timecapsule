@@ -37,8 +37,6 @@ import type {
   HealthStatus,
   LoginInput,
   LogoutResult,
-  PushSubscriptionInput,
-  PushSubscriptionResult,
   RegisterInput,
   SlotClaim,
   SlotClaimInput
@@ -158,7 +156,7 @@ export const getCreateBoothUrl = () => {
 }
 
 /**
- * @summary Create a private booth
+ * @summary Create a private booth (sign-in required)
  */
 export const createBooth = async (boothInput: BoothInput, options?: Parameters<typeof customFetch>[1]): Promise<BoothCreated> => {
 
@@ -224,7 +222,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateBoothMutationVariables = {data: BodyType<BoothInput>}
 
     /**
- * @summary Create a private booth
+ * @summary Create a private booth (sign-in required)
  */
 export const useCreateBooth = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBooth>>, TError,CreateBoothMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -323,7 +321,7 @@ export const getDeleteBoothUrl = (privateToken: string,) => {
 }
 
 /**
- * @summary Delete a booth
+ * @summary Delete a booth (sign-in required)
  */
 export const deleteBooth = async (privateToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
@@ -375,7 +373,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteBoothMutationVariables = {privateToken: string}
 
     /**
- * @summary Delete a booth
+ * @summary Delete a booth (sign-in required)
  */
 export const useDeleteBooth = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBooth>>, TError,DeleteBoothMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -397,7 +395,7 @@ export const getClaimBoothSlotUrl = (privateToken: string,) => {
 }
 
 /**
- * @summary Claim an available participant slot
+ * @summary Claim an available participant slot (sign-in required)
  */
 export const claimBoothSlot = async (privateToken: string,
     slotClaimInput: SlotClaimInput, options?: Parameters<typeof customFetch>[1]): Promise<SlotClaim> => {
@@ -464,7 +462,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ClaimBoothSlotMutationVariables = {privateToken: string;data: BodyType<SlotClaimInput>}
 
     /**
- * @summary Claim an available participant slot
+ * @summary Claim an available participant slot (sign-in required)
  */
 export const useClaimBoothSlot = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimBoothSlot>>, TError,ClaimBoothSlotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -487,7 +485,7 @@ export const getRequestFrameUploadUrl = (privateToken: string,
 }
 
 /**
- * @summary Request a private upload URL for a confirmed candidate frame
+ * @summary Request a private upload URL for a confirmed candidate frame (sign-in required)
  */
 export const requestFrameUpload = async (privateToken: string,
     slotId: string,
@@ -555,7 +553,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RequestFrameUploadMutationVariables = {privateToken: string;slotId: string;data: BodyType<FrameUploadInput>}
 
     /**
- * @summary Request a private upload URL for a confirmed candidate frame
+ * @summary Request a private upload URL for a confirmed candidate frame (sign-in required)
  */
 export const useRequestFrameUpload = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFrameUpload>>, TError,RequestFrameUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -578,7 +576,7 @@ export const getConfirmBoothFrameUrl = (privateToken: string,
 }
 
 /**
- * @summary Confirm an uploaded frame
+ * @summary Confirm an uploaded frame (sign-in required)
  */
 export const confirmBoothFrame = async (privateToken: string,
     slotId: string,
@@ -646,7 +644,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ConfirmBoothFrameMutationVariables = {privateToken: string;slotId: string;data: BodyType<FrameConfirmInput>}
 
     /**
- * @summary Confirm an uploaded frame
+ * @summary Confirm an uploaded frame (sign-in required)
  */
 export const useConfirmBoothFrame = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmBoothFrame>>, TError,ConfirmBoothFrameMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -751,7 +749,7 @@ export const getDeleteDraftPhotoUrl = (privateToken: string,
 }
 
 /**
- * @summary Delete a saved photo before finalizing the participant's set
+ * @summary Delete a saved photo before finalizing the participant's set (sign-in required)
  */
 export const deleteDraftPhoto = async (privateToken: string,
     slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
@@ -804,7 +802,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteDraftPhotoMutationVariables = {privateToken: string;slotId: string}
 
     /**
- * @summary Delete a saved photo before finalizing the participant's set
+ * @summary Delete a saved photo before finalizing the participant's set (sign-in required)
  */
 export const useDeleteDraftPhoto = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDraftPhoto>>, TError,DeleteDraftPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -827,7 +825,7 @@ export const getFinalizeParticipantPhotosUrl = (privateToken: string,
 }
 
 /**
- * @summary Finalize every saved photo for one participant
+ * @summary Finalize every saved photo for one participant (sign-in required)
  */
 export const finalizeParticipantPhotos = async (privateToken: string,
     slotId: string, options?: Parameters<typeof customFetch>[1]): Promise<BoothState> => {
@@ -880,7 +878,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type FinalizeParticipantPhotosMutationVariables = {privateToken: string;slotId: string}
 
     /**
- * @summary Finalize every saved photo for one participant
+ * @summary Finalize every saved photo for one participant (sign-in required)
  */
 export const useFinalizeParticipantPhotos = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeParticipantPhotos>>, TError,FinalizeParticipantPhotosMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -902,7 +900,7 @@ export const getSaveBoothCustomizationUrl = (privateToken: string,) => {
 }
 
 /**
- * @summary Save a booth's reveal artifact customization
+ * @summary Save a booth's reveal artifact customization (sign-in required)
  */
 export const saveBoothCustomization = async (privateToken: string,
     customizationInput: CustomizationInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomizationInput> => {
@@ -969,7 +967,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SaveBoothCustomizationMutationVariables = {privateToken: string;data: BodyType<CustomizationInput>}
 
     /**
- * @summary Save a booth's reveal artifact customization
+ * @summary Save a booth's reveal artifact customization (sign-in required)
  */
 export const useSaveBoothCustomization = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveBoothCustomization>>, TError,SaveBoothCustomizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -980,95 +978,6 @@ export const useSaveBoothCustomization = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSaveBoothCustomizationMutationOptions(options));
-    }
-
-export const getSubscribeToBoothReadyUrl = (privateToken: string,) => {
-
-
-
-
-  return `/api/booths/${privateToken}/push-subscriptions`
-}
-
-/**
- * @summary Save a user-initiated booth-ready push subscription
- */
-export const subscribeToBoothReady = async (privateToken: string,
-    pushSubscriptionInput: PushSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<PushSubscriptionResult> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<PushSubscriptionResult>(getSubscribeToBoothReadyUrl(privateToken),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(pushSubscriptionInput)
-  }
-);}
-
-
-
-
-
-export const getSubscribeToBoothReadyMutationKey = () => ['subscribeToBoothReady'] as const;
-
-export const getSubscribeToBoothReadyMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeToBoothReady>>, TError,SubscribeToBoothReadyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof subscribeToBoothReady>>, TError,SubscribeToBoothReadyMutationVariables, TContext> => {
-
-const mutationKey = getSubscribeToBoothReadyMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof subscribeToBoothReady>>, SubscribeToBoothReadyMutationVariables> = (props) => {
-          const {privateToken,data} = props ?? {};
-
-          return  subscribeToBoothReady(privateToken,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SubscribeToBoothReadyMutationResult = NonNullable<Awaited<ReturnType<typeof subscribeToBoothReady>>>
-    export type SubscribeToBoothReadyMutationBody = BodyType<PushSubscriptionInput>
-    export type SubscribeToBoothReadyMutationError = ErrorType<unknown>
-    export type SubscribeToBoothReadyMutationVariables = {privateToken: string;data: BodyType<PushSubscriptionInput>}
-
-    /**
- * @summary Save a user-initiated booth-ready push subscription
- */
-export const useSubscribeToBoothReady = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeToBoothReady>>, TError,SubscribeToBoothReadyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof subscribeToBoothReady>>,
-        TError,
-        SubscribeToBoothReadyMutationVariables,
-        TContext
-      > => {
-      return useMutation(getSubscribeToBoothReadyMutationOptions(options));
     }
 
 export const getRegisterUrl = () => {
