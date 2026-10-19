@@ -37,8 +37,8 @@ Timecapsule is a private asynchronous photo booth where friends and family contr
 - The workspace uses Replit PostgreSQL and App Storage rather than a Supabase adapter.
 - Booth data and media have no automatic expiry. Creators can delete a booth and its media explicitly.
 - `booths.participant_count` currently stores the number of photo slots; API responses derive the number of people using `photos_per_person`. Preserve this legacy storage meaning unless a data migration is planned.
-- `booths.expires_at` is nullable. The API startup migration may relax an older NOT NULL constraint but must never clear existing expiry values.
-- The unused `push_subscriptions` table remains in the Drizzle schema to avoid an automatic production DROP TABLE proposal. No application code reads or writes it.
+- `booths.expires_at` is nullable in the current schema. Startup removes an older NOT NULL constraint without clearing expiry values.
+- On API startup, `runMigrations` creates missing active tables (`users`, `booths`, `booth_slots`, and `user_booth_access`) and their indexes. It repairs known older columns on `users` and `booths`, and drops the unused `push_subscriptions` table. The session library creates `session`. This does not repair arbitrary schema drift, and it does not replace Replit's pre-publish schema validation.
 
 ## Product
 

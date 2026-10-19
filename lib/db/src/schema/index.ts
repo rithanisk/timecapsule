@@ -1,5 +1,4 @@
 export * from "./booths";
-export * from "./pushSubscriptions";
 export * from "./users";
 export * from "./userBoothAccess";
 

@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { runAuthMigrations } from "./lib/runMigrations";
+import { runMigrations } from "./lib/runMigrations";
 
 const rawPort = process.env["PORT"];
 
@@ -16,7 +16,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-void runAuthMigrations()
+void runMigrations()
   .then(() => {
     app.listen(port, (err) => {
       if (err) {
