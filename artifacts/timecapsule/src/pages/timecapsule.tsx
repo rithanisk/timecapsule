@@ -1,21 +1,20 @@
-import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  type BoothInput, type BoothState, type CanvasObject, type CustomizationInput,
+  type BoothCreated, type BoothInput, type BoothState, type CustomizationInput,
   type FrameConfirmInput, type FrameUploadInput, type PushSubscriptionInput, type SlotClaimInput,
 } from '@workspace/api-client-react';
 import {
   getGetBoothQueryKey, getGetMyBoothsQueryKey, useClaimBoothSlot, useConfirmBoothFrame, useCreateBooth,
-  useDeleteBooth, useGetBooth, useGetMyBooths, useRequestFrameUpload, useSaveBoothCustomization,
+  useDeleteBooth, useGetBooth, useGetMyBooths, useRequestFrameUpload,
   useSubscribeToBoothReady,
   saveBoothCustomization,
 } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
-import { Brand, Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
-import { DraggablePhotoCell } from '@/components/draggable-photo-cell';
+import { Brand, Button, CopyButton, ErrorNote, FramePreview, LoadingCard, Panel, ProgressDots, Shell, SlotList, ArrowLeft, ArrowRight, Camera, Check, Download, Heart, Image, Link2, LoaderCircle, Share2, Sparkles, Trash2 } from '@/components/timecapsule-ui';
 import { sampleStripPhotos, sampleTemplatePhotos } from '@/home-samples';
 import { useArchiveBooths } from '@/lib/archive';
 import { frameAssetUrl, frameOverlayFilter, getFrameLayout, photoIndexForSlot } from '@/lib/frame-layouts';
@@ -68,7 +67,6 @@ const creatorKey = (token: string) => `tc-creator:${token}`;
 const participantKey = (token: string, slotId: string) => `tc-participant:${token}:${slotId}`;
 const participantPrefix = (token: string) => `tc-participant:${token}:`;
 const confirmedKey = (token: string, slotId: string) => `tc-confirmed:${token}:${slotId}`;
-const pendingFrameKey = (token: string) => `tc-pending-frame:${token}`;
 const activeBoothKey = 'tc-active-booth';
 
 function findAccessToken(privateToken: string) {
@@ -248,31 +246,40 @@ export function CreateBoothPage() {
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [photosPerPerson, setPhotosPerPerson] = useState(1);
   const [countdownSeconds, setCountdownSeconds] = useState<3|5|10>(5);
-  const [revealMode, setRevealMode] = useState<'complete'|'scheduled'>('complete');
-  const [scheduledRevealAt, setScheduledRevealAt] = useState('');
+  const [createdBooth, setCreatedBooth] = useState<BoothCreated | null>(null);
+  const [setupError, setSetupError] = useState('');
+  const [savingFrame, setSavingFrame] = useState(false);
   const previewPhotos = useMemo(() => sampleTemplatePhotos(count, photosPerPerson), [count, photosPerPerson]);
   const frameColor = frameType === 'solid' ? '#E5786A' : '#FFFDF8';
   const setNameAt = (index: number, value: string) => setNames((prev) => prev.map((item, i) => i === index ? value : item));
+  const finishCreatedBooth = async (created: BoothCreated) => {
+    setSavingFrame(true);
+    setSetupError('');
+    try {
+      await saveBoothCustomization(created.privateToken, { mode: 'classic', layout, frameType, frameColor, filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
+    } catch (reason) {
+      setSetupError(`The frame could not be saved. ${getError(reason)} Try again before taking photos.`);
+      setSavingFrame(false);
+      return;
+    }
+    setSavingFrame(false);
+    const firstSlot = created.state.slots[0];
+    if (firstSlot) {
+      const claimData: SlotClaimInput = { displayName: names[0]?.trim() || 'Friend 1', slotId: firstSlot.id };
+      claimSlot.mutate({ privateToken: created.privateToken, data: claimData }, { onSuccess: (result) => {
+        localStorage.setItem(participantKey(created.privateToken, result.slotId), result.participantToken);
+        navigate(`/join/${created.privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
+      }, onError: () => navigate(`/booth/${created.privateToken}`) });
+    } else navigate(`/booth/${created.privateToken}`);
+  };
   const submit = () => {
+    if (createdBooth) { void finishCreatedBooth(createdBooth); return; }
     const slots = Array.from({ length: count }, (_, i) => names[i]?.trim() || `Friend ${i + 1}`);
-    const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode: 'classic', layout, prompt, countdownSeconds, photosPerPerson, revealMode, scheduledRevealAt: revealMode === 'scheduled' && scheduledRevealAt ? new Date(scheduledRevealAt).toISOString() : null };
-    createBooth.mutate({ data }, { onSuccess: async (created) => {
+    const data: BoothInput = { name: name.trim(), subtitle: subtitle.trim(), occasion: occasion.trim(), participantCount: count, slots, mode: 'classic', layout, prompt, countdownSeconds, photosPerPerson, revealMode: 'complete', scheduledRevealAt: null };
+    createBooth.mutate({ data }, { onSuccess: (created) => {
       localStorage.setItem(creatorKey(created.privateToken), created.creatorToken);
-      try {
-        await saveBoothCustomization(created.privateToken, { mode: 'classic', layout, frameType, frameColor, filter: 'original', showDate: true, caption: '', captionPosition: 'bottom', captionFont: 'serif', objects: [], slotAdjustments: [] }, { headers: { 'X-Creator-Token': created.creatorToken } });
-      } catch { localStorage.setItem(pendingFrameKey(created.privateToken), frameType); }
-      const firstSlot = created.state.slots[0];
-      if (firstSlot) {
-        const claimData: SlotClaimInput = { displayName: names[0]?.trim() || 'Friend 1', slotId: firstSlot.id };
-        claimSlot.mutate({ privateToken: created.privateToken, data: claimData }, { onSuccess: (result) => {
-          localStorage.setItem(participantKey(created.privateToken, result.slotId), result.participantToken);
-          navigate(`/join/${created.privateToken}/capture?slot=${encodeURIComponent(result.slotId)}`);
-        }, onError: () => {
-          navigate(`/booth/${created.privateToken}`);
-        } });
-      } else {
-        navigate(`/booth/${created.privateToken}`);
-      }
+      setCreatedBooth(created);
+      void finishCreatedBooth(created);
     } });
   };
   return <Shell>
@@ -300,13 +307,12 @@ export function CreateBoothPage() {
         {step === 3 && <div><h1 className="serif text-4xl sm:text-5xl">Set the moment.</h1><p className="mb-7 mt-2 text-[#6f685f]">A tiny prompt helps everyone feel part of the same picture.</p>
           <label className="field-label" htmlFor="prompt">Today's prompt</label><textarea id="prompt" data-testid="input-prompt" className="input-paper mb-6 min-h-24 resize-y" maxLength={120} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
           <span className="field-label">Camera countdown</span><div className="mb-6 flex gap-2">{([3,5,10] as const).map((seconds) => <button key={seconds} aria-pressed={countdownSeconds === seconds} onClick={() => setCountdownSeconds(seconds)} className={`min-h-11 rounded-full border px-5 ${countdownSeconds === seconds ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{seconds} seconds</button>)}</div>
-          <span className="field-label">When should the photos open?</span><div className="grid gap-3 sm:grid-cols-2"><button onClick={() => setRevealMode('complete')} aria-pressed={revealMode === 'complete'} className={`rounded-xl border p-4 text-left ${revealMode === 'complete' ? 'border-[#292723] bg-[#f1ece4]' : 'border-[#d9d1c5]'}`}><strong>When everyone’s ready</strong><span className="mt-1 block text-sm text-[#6f685f]">The keepsake opens when all frames are confirmed.</span></button><button onClick={() => setRevealMode('scheduled')} aria-pressed={revealMode === 'scheduled'} className={`rounded-xl border p-4 text-left ${revealMode === 'scheduled' ? 'border-[#292723] bg-[#f1ece4]' : 'border-[#d9d1c5]'}`}><strong>On a chosen date</strong><span className="mt-1 block text-sm text-[#6f685f]">Everyone’s frame stays hidden until then.</span></button></div>
-          {revealMode === 'scheduled' && <div className="mt-4"><label className="field-label" htmlFor="reveal-date">Reveal date and time</label><input id="reveal-date" type="datetime-local" className="input-paper" value={scheduledRevealAt} onChange={(e) => setScheduledRevealAt(e.target.value)} /></div>}
-          <p className="mt-6 flex items-center gap-2 text-sm text-[#6f685f]"><LockGlyph /> Photos remain hidden until every required frame is confirmed and the reveal time arrives.</p>
+          <p className="mt-6 flex items-center gap-2 text-sm text-[#6f685f]"><LockGlyph /> The photobooth opens when everyone has finished their photos.</p>
         </div>}
         {createBooth.isError && <div className="mt-5"><ErrorNote message={getError(createBooth.error)} /></div>}
         {claimSlot.isError && <div className="mt-5"><ErrorNote message={getError(claimSlot.error)} /></div>}
-        <div className="mt-8 flex justify-center">{step < 3 ? <Button disabled={step === 1 && (!name.trim() || !names[0]?.trim())} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || !name.trim() || !names[0]?.trim() || (revealMode === 'scheduled' && !scheduledRevealAt)} onClick={submit}>{createBooth.isPending || claimSlot.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} Create private booth</Button>}</div>
+        {setupError && <div className="mt-5"><ErrorNote message={setupError} /></div>}
+        <div className="mt-8 flex justify-center">{step < 3 ? <Button disabled={step === 1 && (!name.trim() || !names[0]?.trim())} onClick={() => setStep(step+1)}>Continue <ArrowRight size={17} /></Button> : <Button disabled={createBooth.isPending || claimSlot.isPending || savingFrame || !name.trim() || !names[0]?.trim()} onClick={submit}>{createBooth.isPending || claimSlot.isPending || savingFrame ? <LoaderCircle className="animate-spin" /> : <Sparkles size={17} />} {createdBooth ? 'Retry frame setup' : 'Create private booth'}</Button>}</div>
       </Panel>
     </div>
   </Shell>;
@@ -341,10 +347,9 @@ export function BoothManagePage() {
     <button onClick={() => navigate('/')} className="button-quiet mb-6 inline-flex items-center gap-2 !px-0"><ArrowLeft size={16} /> Home</button>
     {query.isLoading || !booth ? <BoothLoading error={query.error} retry={() => void query.refetch()} /> : <>
       <div className="mb-7"><p className="eyebrow">A little place for your people</p><h1 className="serif mt-2 text-5xl sm:text-6xl">{booth.name}</h1>{booth.subtitle && <p className="mt-2 text-[#6f685f]">{booth.subtitle}</p>}</div>
-      {booth.revealAvailable ? <div className="mb-7 rounded-2xl border border-[#c2d9cf] bg-[#e6f0eb] p-5"><strong className="serif text-2xl">Everyone’s here. Your booth is ready.</strong><p className="mt-1 text-sm text-[#586d63]">The frames are together at last.</p><Button className="mt-4" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open the photobooth <ArrowRight size={17} /></Button></div> : <div className="mb-7"><h2 className="serif text-3xl">{finalizedPeople === 0 ? 'The first person is still to come.' : `${personCount - finalizedPeople} ${personCount - finalizedPeople === 1 ? 'person' : 'people'} left to finalize.`}</h2><p className="mt-1 text-[#6f685f]">Photos stay tucked away until everyone is in.</p>{booth.scheduledRevealAt && <p className="mt-2 text-sm text-[#756f66]">The chosen reveal time is {new Date(booth.scheduledRevealAt).toLocaleString()}.</p>}</div>}
+      {booth.revealAvailable ? <div className="mb-7 rounded-2xl border border-[#c2d9cf] bg-[#e6f0eb] p-5 text-center"><strong className="serif text-2xl">Everyone’s done. Your photobooth is ready.</strong><p className="mt-1 text-sm text-[#586d63]">The frames are together at last.</p><Button className="mt-4" onClick={() => navigate(`/booth/${privateToken}/reveal`)}>View final photobooth <ArrowRight size={17} /></Button></div> : <div className="mb-7"><h2 className="serif text-3xl">{finalizedPeople === 0 ? 'The first person is still to come.' : `${personCount - finalizedPeople} ${personCount - finalizedPeople === 1 ? 'person' : 'people'} left to finalize.`}</h2><p className="mt-1 text-[#6f685f]">Photos stay tucked away until everyone is in.</p></div>}
       <Panel><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><span className="eyebrow">The little roll call</span><p className="mb-0 mt-1 font-semibold">{finalizedPeople} of {personCount} people finalized</p></div><ProgressDots total={personCount} complete={finalizedPeople} noun="people" /></div><SlotList slots={booth.slots} photosPerPerson={booth.photosPerPerson} /><div className="mt-6 flex flex-wrap gap-3"><CopyButton text={inviteUrl}><Link2 size={16} /> Copy invitation link</CopyButton><Button variant="secondary" onClick={() => { const text = `A photobooth for us: ${inviteUrl}`; if (navigator.share) void navigator.share({ title: booth.name, text, url: inviteUrl }); else void navigator.clipboard.writeText(text); }}><Share2 size={16} /> Share invite</Button><Button variant="quiet" onClick={() => navigate(`/booth/${privateToken}/notifications`)}>Gentle reminders</Button></div></Panel>
-      {!creatorToken && <p className="mt-4 rounded-xl bg-[#f2e5d8] p-4 text-sm text-[#6f5147]">Creator controls are available on the device where this booth was created.</p>}
-      <div className="mt-4 flex flex-wrap gap-2">{booth.revealAvailable && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize keepsake</Button>}<Button variant="quiet" disabled={!creatorToken || deleteBooth.isPending} onClick={deleteIt}><Trash2 size={16} /> Delete booth</Button></div>
+      {creatorToken && <div className="mt-4 flex flex-wrap gap-2"><Button variant="quiet" disabled={deleteBooth.isPending} onClick={deleteIt}><Trash2 size={16} /> Delete booth</Button></div>}
       {deleteBooth.isError && <div className="mt-4"><ErrorNote message={getError(deleteBooth.error)} /></div>}
     </>}
   </div></Shell>;
@@ -436,7 +441,7 @@ export function CapturePage() {
   const allMySlotsSubmitted = mySlots.length > 0 && mySlots.every((s) => s.claimStatus === 'submitted');
   const allMySlotsSaved = mySlots.length > 0 && mySlots.every((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted');
   const savedCount = mySlots.filter((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted').length;
-  const privatePhotoIds = mySlots.filter((s) => s.claimStatus === 'staged' || s.claimStatus === 'submitted').map((s) => s.id).join(',');
+  const privatePhotoIds = mySlots.filter((s) => s.claimStatus === 'staged').map((s) => s.id).join(',');
   const requestUpload = useRequestFrameUpload({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const confirmFrame = useConfirmBoothFrame({ request: { headers: { 'X-Participant-Token': participantToken } } });
   const queryClient = useQueryClient();
@@ -455,7 +460,6 @@ export function CapturePage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [error, setError] = useState('');
-  const confirmedRef = useRef(false);
   useEffect(() => {
     if (!privatePhotoIds || !participantToken) { setSavedUrls({}); return; }
     const controller = new AbortController();
@@ -488,7 +492,10 @@ export function CapturePage() {
     void cameraStart();
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
   }, [cameraStart, cameraActive]);
-  useEffect(() => () => { if (preview && !confirmedRef.current) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => {
+    if (allMySlotsSubmitted && !isSaving && !isFinalizing) navigate(`/booth/${privateToken}`, { replace: true });
+  }, [allMySlotsSubmitted, isSaving, isFinalizing, navigate, privateToken]);
   const capture = () => {
     if (countdown !== null) return;
     let n = boothQuery.data?.countdownSeconds ?? 5;
@@ -549,14 +556,7 @@ export function CapturePage() {
         return;
       }
       localStorage.setItem(confirmedKey(privateToken, currentSlotId), 'true');
-      confirmedRef.current = true;
-      const isCreator = Boolean(localStorage.getItem(creatorKey(privateToken)));
-      if (isCreator && preview) {
-        sessionStorage.setItem(`tc-preview:${privateToken}`, preview);
-        navigate(`/booth/${privateToken}/style`);
-      } else {
-        navigate(`/booth/${privateToken}/notifications?confirmed=1`);
-      }
+      navigate(`/booth/${privateToken}`);
     } catch (reason) { setError(getError(reason)); setIsSaving(false); }
   };
   const removeSaved = async (index: number, retakeNow: boolean) => {
@@ -585,16 +585,18 @@ export function CapturePage() {
       const state = await response.json() as BoothState;
       queryClient.setQueryData(getGetBoothQueryKey(privateToken), state);
       localStorage.setItem(confirmedKey(privateToken, slotId), 'true');
-      if (state.revealAvailable) navigate(`/booth/${privateToken}/reveal`);
-      else setIsFinalizing(false);
+      navigate(`/booth/${privateToken}`);
     } catch (reason) { setError(getError(reason)); setIsFinalizing(false); }
   };
   if (!slotId || !token) return <Shell><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Your frame link is needed.</h1><p className="text-[#6f685f]">Open the invitation and claim an available frame first. Your participant key is kept on this device.</p><a href={`/join/${privateToken}`} className="button-primary mt-4 inline-flex items-center no-underline">Back to invitation</a></Panel></div></Shell>;
   if (boothQuery.isLoading) return <Shell><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
-  if (allMySlotsSubmitted && !isSaving) return <Shell><div className="mx-auto max-w-[720px] py-6"><div className="text-center"><p className="eyebrow text-[#c66e61]">Your finished photos</p><h1 className="serif mt-2 text-4xl">Your strip is ready.</h1><p className="mx-auto mt-2 max-w-md text-sm text-[#6f685f]">Your photos are finalized. The group strip opens when everyone has finished.</p><div className="mx-auto mt-4" style={{ width: fittedFrameWidth('classic-strip', 1, mySlots.length, 'min(35dvh, 390px)') }}><FramePreview photos={mySlots.map((item) => savedUrls[item.id] ?? '')} layout="classic-strip" people={1} photosPerPerson={mySlots.length} frameType={boothQuery.data?.customization.frameType ?? 'clean'} frameColor={boothQuery.data?.customization.frameColor ?? '#FFFDF8'} /></div><div className="mt-4 flex flex-wrap justify-center gap-3">{boothQuery.data?.revealAvailable && <Button onClick={() => navigate(`/booth/${privateToken}/reveal`)}>Open group photostrip <ArrowRight size={17} /></Button>}{localStorage.getItem(creatorKey(privateToken)) && <Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}/style`)}>Style the booth</Button>}<Button variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>View booth status</Button></div></div></div></Shell>;
+  if (allMySlotsSubmitted && !isSaving) return <Shell><div className="mx-auto max-w-lg py-12"><LoadingCard /></div></Shell>;
   const photoBusy = isSaving || isRemoving || isFinalizing;
-  return <main className={`min-h-[100dvh] bg-[#292723] px-4 pt-5 text-[#fffdf8] ${totalPhotos > 1 ? 'pb-[220px]' : 'pb-10'}`}>
+  return <main className="min-h-[100dvh] bg-[#292723] px-4 pb-10 pt-5 text-[#fffdf8]">
+    {flash && <div className="camera-flash pointer-events-none fixed inset-0 z-[100] bg-white" aria-hidden="true" />}
     <p className="mb-4 text-center text-xs text-[#cfc8be]">{slot?.displayName || 'Your frame'}{totalPhotos > 1 && (allMySlotsSaved && reviewIndex === null ? ' · Ready to finish' : ` · Photo ${currentPhotoIndex + 1} of ${totalPhotos}`)}</p>
+    <div className={`mx-auto grid w-full items-start gap-6 ${totalPhotos > 1 ? 'max-w-[900px] md:grid-cols-[minmax(0,600px)_minmax(180px,240px)]' : 'max-w-[600px]'}`}>
+    <div className="min-w-0">
     {reviewIndex !== null && mySlots[reviewIndex]?.claimStatus === 'staged' ? <div className="mx-auto max-w-[600px]">
       <div className="mb-5 text-center"><p className="eyebrow text-[#e8a99c]">Saved photo {reviewIndex + 1} of {totalPhotos}</p><h1 className="serif mb-1 mt-2 text-4xl">Keep this moment?</h1><p className="mb-0 text-sm text-[#d1c9be]">Only you can see it while you finish your photos.</p></div>
       <div className="relative mx-auto aspect-[4/5] max-h-[42dvh] overflow-hidden rounded-[26px] bg-[#47433d] sm:max-h-[58dvh]">{savedUrls[mySlots[reviewIndex].id] ? <img src={savedUrls[mySlots[reviewIndex].id]} alt={`Saved photo ${reviewIndex + 1}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><LoaderCircle className="animate-spin" /></div>}</div>
@@ -612,7 +614,6 @@ export function CapturePage() {
         <div className="pointer-events-none absolute inset-[7%] rounded-[22px] border border-dashed border-white/70" />
         <div className="absolute left-1/2 top-4 max-w-[90%] -translate-x-1/2 rounded-full bg-black/50 px-4 py-2 text-center text-xs">{boothQuery.data?.prompt || defaultPrompt}</div>
         {countdown !== null && <div className="absolute inset-0 grid place-items-center bg-black/20"><span className="serif text-[8rem] leading-none text-white drop-shadow-lg">{countdown}</span></div>}
-        {flash && <div className="camera-flash pointer-events-none absolute inset-0 bg-white" aria-hidden="true" />}
         {streamError && <div className="absolute inset-x-4 bottom-4 rounded-xl bg-black/70 p-3 text-center text-sm">{streamError}</div>}
       </div>
       <div className="mt-5 flex items-center justify-center gap-8"><button aria-label="Choose photo from device" className="grid size-12 place-items-center rounded-full bg-white/10" onClick={() => fileRef.current?.click()}><Image size={19} /></button><button aria-label="Take photo" className="grid size-[76px] place-items-center rounded-full border-[5px] border-white bg-transparent" onClick={capture} disabled={countdown !== null}><span className="size-[54px] rounded-full bg-white" /></button><button aria-label="Switch camera" className="grid size-12 place-items-center rounded-full bg-white/10" onClick={() => setFacing((value) => value === 'user' ? 'environment' : 'user')}><Camera size={19} /></button></div>
@@ -624,13 +625,15 @@ export function CapturePage() {
       <div className={`relative mx-auto aspect-[4/5] overflow-hidden rounded-[26px] bg-[#47433d] ${totalPhotos > 1 ? 'max-h-[40dvh] sm:max-h-[66dvh]' : 'max-h-[66dvh]'}`}><img src={preview} alt="Your photo preview" className="h-full w-full object-cover" style={{ transform: mirror && source === 'camera' ? 'scaleX(-1)' : undefined }} /></div>
       <div className="mx-auto mt-5 flex max-w-[460px] gap-3"><Button variant="secondary" className="flex-1" onClick={retake} disabled={photoBusy}>Retake</Button><Button variant="secondary" className="flex-1" onClick={() => setMirror((v) => !v)}>Mirror: {mirror ? 'on' : 'off'}</Button></div>
       {error && <p role="alert" className="mt-3 text-center text-sm text-[#f2bdb0]">{error}</p>}
-      <div className={`left-0 right-0 flex flex-col items-center bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6 ${totalPhotos > 1 ? 'sticky bottom-[184px]' : 'sticky bottom-0'}`}>
+      <div className="sticky bottom-0 left-0 right-0 flex flex-col items-center bg-gradient-to-t from-[#292723] via-[#292723] to-transparent pb-4 pt-6">
         <Button className="w-full max-w-[460px] bg-[#E5786A] !text-[#fffdf8] shadow-lg shadow-[#E5786A]/30 hover:bg-[#d96b5d]" disabled={photoBusy} onClick={() => void confirm()}>{photoBusy ? <><LoaderCircle className="animate-spin" /> Saving privately…</> : <>{totalPhotos > 1 ? 'Save to my photos' : 'Use this photo'} <Check size={17} /></>}</Button>
         <p className="mt-2 text-center text-xs text-[#bdb6ad]">{totalPhotos > 1 ? 'You can review or retake it before finishing your set.' : 'Visible only after every frame is confirmed.'}</p>
       </div>
     </div>}
     <div className="mt-5 text-center"><a href={`/join/${privateToken}`} className="text-sm text-[#ded7ce] underline underline-offset-4">Back to invitation</a></div>
-    {totalPhotos > 1 && <section className="fixed inset-x-3 bottom-3 z-30 mx-auto max-w-[600px] rounded-[24px] border border-white/20 bg-[#383530]/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur-md" aria-label="Saved photos"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="eyebrow mb-1 text-[#e8a99c]">Camera roll</p><p className="m-0 text-xs text-[#d1c9be]">{savedCount} of {totalPhotos} saved · tap to review</p></div>{savedCount > 0 && !allMySlotsSaved && <button type="button" className="text-xs text-[#e8a99c] underline underline-offset-4" onClick={() => { if (preview) retake(); setShowTrayOverview(true); }}>View all</button>}</div><div className="flex gap-3 overflow-x-auto pb-1">{mySlots.map((item, index) => <button key={item.id} type="button" aria-label={item.claimStatus === 'staged' ? `Review saved photo ${index + 1}` : item.claimStatus === 'submitted' ? `Photo ${index + 1} finalized` : `Take photo ${index + 1}`} aria-pressed={reviewIndex === index} className={`relative aspect-[4/5] w-[60px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#47433d] sm:w-[76px] ${reviewIndex === index ? 'border-[#E5786A]' : 'border-white/25'}`} disabled={photoBusy || item.claimStatus === 'submitted'} onClick={() => { if (preview) retake(); setError(''); if (item.claimStatus === 'staged') { setReviewIndex(index); setShowTrayOverview(false); } else { setReviewIndex(null); setShowTrayOverview(false); } }}><span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px]">{index + 1}</span>{savedUrls[item.id] ? <img src={savedUrls[item.id]} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[11px] text-[#d1c9be]">{item.claimStatus === 'claimed' ? '+' : item.claimStatus === 'submitted' ? '✓' : '…'}</span>}</button>)}</div></section>}
+    </div>
+    {totalPhotos > 1 && <section className="min-w-0 rounded-[24px] border border-white/20 bg-[#383530] px-4 py-3 shadow-xl shadow-black/20 md:sticky md:top-5 md:max-h-[calc(100dvh-40px)] md:overflow-y-auto" aria-label="Saved photos"><div className="mb-2 flex items-center justify-between gap-3"><div><p className="eyebrow mb-1 text-[#e8a99c]">Camera roll</p><p className="m-0 text-xs text-[#d1c9be]">{savedCount} of {totalPhotos} saved · tap to review</p></div>{savedCount > 0 && !allMySlotsSaved && <button type="button" className="text-xs text-[#e8a99c] underline underline-offset-4" onClick={() => { if (preview) retake(); setShowTrayOverview(true); }}>View all</button>}</div><div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-2 md:overflow-visible">{mySlots.map((item, index) => <button key={item.id} type="button" aria-label={item.claimStatus === 'staged' ? `Review saved photo ${index + 1}` : item.claimStatus === 'submitted' ? `Photo ${index + 1} finalized` : `Take photo ${index + 1}`} aria-pressed={reviewIndex === index} className={`relative aspect-[4/5] w-[60px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#47433d] sm:w-[76px] ${reviewIndex === index ? 'border-[#E5786A]' : 'border-white/25'}`} disabled={photoBusy || item.claimStatus === 'submitted'} onClick={() => { if (preview) retake(); setError(''); if (item.claimStatus === 'staged') { setReviewIndex(index); setShowTrayOverview(false); } else { setReviewIndex(null); setShowTrayOverview(false); } }}><span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-black/65 px-1.5 py-0.5 text-[10px]">{index + 1}</span>{savedUrls[item.id] ? <img src={savedUrls[item.id]} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[11px] text-[#d1c9be]">{item.claimStatus === 'claimed' ? '+' : item.claimStatus === 'submitted' ? '✓' : '…'}</span>}</button>)}</div></section>}
+    </div>
   </main>;
 }
 
@@ -740,31 +743,29 @@ export function RevealPage() {
   };
   if (boothId && !user) return <Shell><div className="mx-auto max-w-[600px] py-12"><Panel><h1 className="serif text-3xl">Sign in to open this keepsake.</h1><p className="mt-2 text-[#756f66]">This photostrip belongs to your account archive.</p><Button onClick={() => navigate(`/login?next=${encodeURIComponent(`/archive/${boothId}/reveal`)}`)}>Sign in</Button></Panel></div></Shell>;
   if ((privateToken ? query.isLoading : archiveLoading) || !booth) return <Shell dark><div className="mx-auto max-w-[700px] py-12"><BoothLoading error={privateToken ? query.error : archiveError} retry={() => privateToken ? void query.refetch() : navigate('/archive')} /></div></Shell>;
-  if (!booth.revealAvailable) return <Shell><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos are kept private until every frame is confirmed and the reveal time arrives.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
-  return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-6 pt-5 text-[#fffdf8]">
-    <div className="mx-auto max-w-[840px] text-center"><p className="eyebrow text-[#cfc8be]">A moment from everywhere</p><h1 key={`title-${replay}`} className={`serif mt-1 text-3xl sm:text-4xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>{booth.subtitle && <p className={`mt-1 text-sm text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
-      <div className="keepsake-preview mx-auto mt-3" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(30dvh, 350px)') }}><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
-      <div className={`mx-auto mt-4 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-2 text-center ${skip ? '' : 'reveal-copy'}`}><Button className="bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button><Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate(`/booth/${privateToken}/edit`)}><Palette size={16} /> Customize</Button>}{privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}<Button variant="quiet" className="!text-[#cfc8be]" onClick={() => navigate('/')}>Home</Button>{!skip && <Button variant="quiet" className="!text-[#cfc8be]" onClick={() => setSkip(true)}>Skip reveal</Button>}</div>
+  if (!booth.revealAvailable) return <Shell><div className="mx-auto max-w-[660px] py-14"><Panel className="text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-[#f0e4d7]"><LockGlyph /></span><h1 className="serif mt-5 text-4xl">Not quite time yet.</h1><p className="mx-auto max-w-md text-[#6f685f]">The photos stay private until everyone has finished.</p><ProgressDots total={booth.participantCount} complete={booth.completedCount} /><p className="mt-2 text-sm">{booth.completedCount} of {booth.participantCount} ready</p><Button className="mt-4" variant="secondary" onClick={() => navigate(`/booth/${privateToken}`)}>Back to the booth</Button></Panel></div></Shell>;
+  return <main className="min-h-[100dvh] overflow-hidden bg-[#292723] px-5 pb-8 pt-5 text-[#fffdf8]">
+    <div className="mx-auto max-w-[1200px] text-center">
+      <p className="eyebrow text-[#cfc8be]">A moment from everywhere</p>
+      <h1 key={`title-${replay}`} className={`serif mt-1 text-3xl sm:text-4xl ${skip ? 'opacity-100' : 'reveal-copy'}`}>{booth.name}</h1>
+      {booth.subtitle && <p className={`mt-1 text-sm text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
+      <div className="reveal-machine mx-auto mt-4" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(74dvh, 820px)') }}>
+        <div className="reveal-machine-head" aria-hidden="true"><span className="reveal-machine-brand">timecapsule</span><span className="reveal-machine-light" /><span className="reveal-machine-slit" /></div>
+        <div className="reveal-output keepsake-preview"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
+      </div>
+      <div className={`mx-auto mt-5 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-3 text-center ${skip ? '' : 'reveal-copy'}`}>
+        <Button className="!bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button>
+        <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { setReplay((v) => v+1); setSkip(false); }}><Sparkles size={16} /> Replay</Button>
+        <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => navigate('/archive')}>Archive</Button>
+        {privateToken && <Button variant="secondary" className="!border-[#6d6962] !bg-[#3b3935] !text-white" onClick={() => { const url = location.href; if (navigator.share) void navigator.share({ title: booth.name, url }); else { void navigator.clipboard.writeText(url); setShareMessage('Private link copied.'); } }}><Share2 size={16} /> Share link</Button>}
+        <Button variant="quiet" className="!text-[#cfc8be]" onClick={() => navigate('/')}>Home</Button>
+        {!skip && <Button variant="quiet" className="!text-[#cfc8be]" onClick={() => setSkip(true)}>Skip reveal</Button>}
+      </div>
       {shareMessage && <p className="mt-2 text-sm text-[#d6cfc5]" role="status">{shareMessage}</p>}
     </div>
   </main>;
 }
 
-const defaultCustomization = (booth: BoothState): CustomizationInput => ({
-  mode: booth.customization?.mode ?? booth.mode,
-  layout: booth.customization?.layout ?? booth.layout,
-  frameType: booth.customization?.frameType ?? 'clean',
-  frameColor: booth.customization?.frameColor ?? '#FFFDF8',
-  filter: booth.customization?.filter ?? 'original',
-  showDate: booth.customization?.showDate ?? true,
-  caption: booth.customization?.caption ?? '',
-  captionPosition: booth.customization?.captionPosition ?? 'bottom',
-  captionFont: booth.customization?.captionFont ?? 'serif',
-  objects: booth.customization?.objects ?? [],
-  slotAdjustments: booth.customization?.slotAdjustments ?? [],
-});
-const filters: Array<[CustomizationInput['filter'],string]> = [['original','Original'],['soft-bw','Soft B&W'],['high-contrast','Contrast'],['warm-film','Warm film'],['cool-flash','Cool flash'],['faded','Faded'],['disposable','Disposable'],['sepia','Sepia'],['grain','Grain']];
-const frameColors = ['#FFFDF8','#292723','#E5786A','#A9C7BD','#AFC4E6','#EBCB8B'];
 const frameTypes: CustomizationInput['frameType'][] = ['clean','black','solid','polaroid','film','torn','pattern','retro','seasonal','whimsical','film-noir'];
 
 function FrameTypePicker({ value, onChange, layout = 'classic-strip', people = 1, photosPerPerson = 2, photos = sampleTemplatePhotos(1, 2), frameColor }: {
@@ -780,196 +781,6 @@ function FrameTypePicker({ value, onChange, layout = 'classic-strip', people = 1
     <span className="frame-option-preview"><span className="frame-option-artwork" style={{ width: fittedFrameWidth(layout, people, photosPerPerson, '72px') }}><FramePreview photos={photos} layout={layout} people={people} photosPerPerson={photosPerPerson} frameType={item} frameColor={item === 'solid' && (frameColor ?? '#FFFDF8').toLowerCase() === '#fffdf8' ? '#E5786A' : frameColor ?? '#FFFDF8'} compact showDate={false} /></span></span>
     <span>{item === 'film-noir' ? 'Film Noir' : item}</span>
   </button>)}</div>;
-}
-
-export function EditorPage() {
-  const { privateToken = '' } = useParams<{privateToken:string}>();
-  const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
-  const query = useBooth(privateToken);
-  const booth = query.data;
-  const creatorToken = localStorage.getItem(creatorKey(privateToken)) ?? '';
-  const save = useSaveBoothCustomization({ request: { headers: { 'X-Creator-Token': creatorToken } } });
-  const [tab, setTab] = useState<'Layout'|'Frame'|'Filter'|'Stickers'|'Text'>('Layout');
-  const [custom, setCustom] = useState<CustomizationInput | null>(null);
-  const [history, setHistory] = useState<CustomizationInput[]>([]);
-  const [redoHistory, setRedoHistory] = useState<CustomizationInput[]>([]);
-  const [dirty, setDirty] = useState(false);
-  const debounce = useRef<number | undefined>(undefined);
-  const editRevision = useRef(0);
-  const saveQueue = useRef<Promise<void>>(Promise.resolve());
-  const dragRef = useRef<{id:string; x:number;y:number; originX:number;originY:number;rect:DOMRect}|null>(null);
-  useEffect(() => { if (booth) setCustom((existing) => existing ?? defaultCustomization(booth)); }, [booth]);
-  const update = (patch: Partial<CustomizationInput>) => {
-    setCustom((current) => {
-      if (!current) return current;
-      setHistory((h) => [...h.slice(-19), current]);
-      setRedoHistory([]);
-      setDirty(true);
-      editRevision.current += 1;
-      return { ...current, ...patch };
-    });
-  };
-  const saveNow = useCallback((value: CustomizationInput, revision: number) => {
-    const pending = saveQueue.current.catch(() => undefined).then(async () => {
-      const saved = await save.mutateAsync({ privateToken, data: value });
-      queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
-      if (editRevision.current === revision) setDirty(false);
-    });
-    saveQueue.current = pending;
-    return pending;
-  }, [privateToken, save.mutateAsync, queryClient]);
-  const saveAndExit = async () => {
-    if (!creatorToken || !custom) return;
-    window.clearTimeout(debounce.current);
-    try {
-      await saveNow(custom, editRevision.current);
-      navigate(`/booth/${privateToken}/reveal`);
-    } catch { /* The visible mutation error gives the user a retry path. */ }
-  };
-  useEffect(() => {
-    if (!dirty || !custom || !creatorToken) return;
-    window.clearTimeout(debounce.current);
-    debounce.current = window.setTimeout(() => { void saveNow(custom, editRevision.current).catch(() => undefined); }, 900);
-    return () => window.clearTimeout(debounce.current);
-  }, [custom, dirty, creatorToken, saveNow]);
-  const addObject = (kind: 'sticker'|'text', label: string) => {
-    const object: CanvasObject = { id: `${kind}-${Date.now()}`, kind, label, x: .5, y: .5, width: kind === 'text' ? .55 : .15, height: kind === 'text' ? .12 : .12, rotation: 0, color: kind === 'text' ? '#292723' : '#E5786A', zIndex: (custom?.objects.length ?? 0) + 1 };
-    update({ objects: [...(custom?.objects ?? []), object] });
-    if (kind === 'text') setTab('Text');
-  };
-  const moveObject = (event: PointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current;
-    if (!drag || !custom) return;
-    const nextX = Math.max(.03,Math.min(.97,drag.originX+(event.clientX-drag.x)/drag.rect.width));
-    const nextY = Math.max(.03,Math.min(.97,drag.originY+(event.clientY-drag.y)/drag.rect.height));
-    setCustom((value) => value ? { ...value, objects: value.objects.map((object) => object.id === drag.id ? { ...object, x: nextX, y: nextY } : object) } : value);
-  };
-  if (query.isLoading || !booth || !custom) return <Shell><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
-  if (!booth.revealAvailable) return <Shell><div className="mx-auto max-w-xl py-12"><Panel><h1 className="serif text-3xl">The keepsake will be ready soon.</h1><p>Customization opens once the full photobooth is revealed.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
-  const colors = custom.frameColor;
-  const undo = () => { const previous = history.at(-1); if (!previous) return; setRedoHistory((v) => [...v,custom]); setCustom(previous); setHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
-  const redo = () => { const next = redoHistory.at(-1); if (!next) return; setHistory((v) => [...v,custom]); setCustom(next); setRedoHistory((v) => v.slice(0,-1)); editRevision.current += 1; setDirty(true); };
-  return <Shell>
-    <div className="mx-auto max-w-[1100px] py-6"><div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">A keepsake, made yours</p><h1 className="serif mt-1 text-4xl">Customize the reveal</h1></div><div className="flex items-center gap-2"><button aria-label="Undo" className="button-quiet" disabled={!history.length} onClick={undo}>Undo</button><button aria-label="Redo" className="button-quiet" disabled={!redoHistory.length} onClick={redo}>Redo</button><Button disabled={!creatorToken || save.isPending} onClick={() => void saveAndExit()}>{save.isPending ? 'Saving…' : dirty ? 'Save & done' : 'Done'}</Button></div></div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(340px,.9fr)]">
-        <section className="flex min-h-[320px] items-center justify-center p-4 sm:min-h-[440px] sm:p-8">
-          <div className="relative mx-auto" style={{ width: fittedFrameWidth(custom.layout, booth.participantCount, booth.photosPerPerson, 'min(44dvh, 460px)') }} ref={(el) => { if (el) el.dataset.canvas = 'true'; }}>
-            <div className="keepsake-preview"><FramePreview photos={booth.slots.map((s) => s.photoUrl ?? '')} layout={custom.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={custom.caption} frameColor={colors} filter={custom.filter} frameType={custom.frameType} showDate={custom.showDate} captionPosition={custom.captionPosition} captionFont={custom.captionFont} slotAdjustments={custom.slotAdjustments} stickerImageMap={stickerImageMap} renderCell={(photo, i) => <DraggablePhotoCell key={i} photo={photo} slotIndex={i} adjustment={custom.slotAdjustments?.find((a) => a.slotIndex === i)} onAdjust={(idx, px, py, s) => { const existing = custom.slotAdjustments?.filter((a) => a.slotIndex !== idx) ?? []; update({ slotAdjustments: [...existing, { slotIndex: idx, panX: px, panY: py, scale: s }] }); }} />} /></div>
-            {custom.objects.map((object) => <button key={object.id} className="absolute z-10 cursor-move touch-none rounded-md border border-dashed border-[#e5786a] bg-[#fffdf8]/75 px-2 py-1 text-sm" style={{ left: `${object.x*100}%`, top: `${object.y*100}%`, transform: `translate(-50%,-50%) rotate(${object.rotation}deg)`, color: object.color }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); const rect = event.currentTarget.parentElement?.getBoundingClientRect(); if (rect) { setHistory((items) => [...items.slice(-19), custom]); setRedoHistory([]); dragRef.current = { id: object.id, x: event.clientX, y: event.clientY, originX: object.x, originY: object.y, rect }; } }} onPointerMove={moveObject} onPointerUp={() => { dragRef.current = null; editRevision.current += 1; setDirty(true); }}>{object.kind === 'sticker' && stickerImageMap[object.label] ? <img src={stickerImageMap[object.label]} alt={object.label} className="size-10 object-contain" /> : object.label}</button>)}
-          </div>
-        </section>
-        <section className="paper-card rounded-[22px] p-4 sm:p-6">
-          <div role="tablist" aria-label="Customization tools" className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[#f0ebe3] p-1">{(['Layout','Frame','Filter','Stickers','Text'] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`min-h-11 flex-1 rounded-lg px-2 text-xs font-semibold sm:text-sm ${tab === item ? 'bg-[#fffdf8] shadow-sm' : 'text-[#756f66]'}`}>{item}</button>)}</div>
-          {tab === 'Layout' && <div><h2 className="serif text-2xl">Arrange the moments</h2><p className="text-sm text-[#6f685f]">Changing the layout keeps every caption and decoration.</p><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{layouts.map(([key,label]) => <button key={key} onClick={() => update({ layout: key as CustomizationInput['layout'] })} aria-pressed={custom.layout === key} className={`min-h-12 rounded-xl border p-2 text-sm ${custom.layout === key ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5]'}`}>{label}</button>)}</div></div>}
-          {tab === 'Frame' && <div><h2 className="serif text-2xl">Give it a border</h2><FrameTypePicker value={custom.frameType} onChange={(frameType) => update({ frameType, ...(frameType === 'solid' && custom.frameColor.toLowerCase() === '#fffdf8' ? { frameColor: '#E5786A' } : {}) })} layout={custom.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} photos={booth.slots.map((slot) => slot.photoUrl ?? '')} frameColor={custom.frameColor} /><p className="field-label mt-6">Paper color</p><div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={custom.frameColor.toLowerCase() === color.toLowerCase()} onClick={() => update({ frameColor: color })} className={`size-11 rounded-full border ${custom.frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div><label className="mt-5 flex min-h-12 items-center justify-between rounded-xl border border-[#d9d1c5] px-4 text-sm">Show date <input type="checkbox" checked={custom.showDate} onChange={(e) => update({ showDate: e.target.checked })} /></label></div>}
-          {tab === 'Filter' && <div><h2 className="serif text-2xl">A little atmosphere</h2><div className="mt-4 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={custom.filter === value} onClick={() => update({ filter: value })} className={`min-h-[76px] rounded-xl border p-2 text-center ${custom.filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-2 block h-8 w-11 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div></div>}
-          {tab === 'Stickers' && <div><h2 className="serif text-2xl">Add a tiny flourish</h2><p className="text-sm text-[#6f685f]">Pick one, then drag it anywhere on the paper.</p>
-            <div className="grid grid-cols-2 gap-2">{[['✦','Little star'],['♥','Heart'],['✿','Bloom'],['⌁','Doodle'],['TAPE','Tape'],['✎','Note']].map(([symbol,label]) => <button key={label} onClick={() => addObject('sticker',symbol)} className="min-h-[56px] rounded-xl border border-[#d9d1c5] bg-[#fffdf8] text-sm"><span className="mr-2 text-lg text-[#e5786a]">{symbol}</span>{label}</button>)}</div>
-            <p className="field-label mt-5">Illustrations</p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{assetStickers.map((s) => <button key={s.label} onClick={() => addObject('sticker', s.label)} className="flex flex-col items-center gap-1 rounded-xl border border-[#d9d1c5] bg-[#fffdf8] p-2 text-xs hover:border-[#292723]"><img src={s.src} alt={s.label} className="size-9 object-contain" />{s.label}</button>)}</div>
-            {custom.objects.filter((o) => o.kind === 'sticker').map((o) => <button key={o.id} onClick={() => update({ objects: custom.objects.filter((item) => item.id !== o.id) })} className="button-quiet mt-3 inline-flex items-center gap-1"><Trash2 size={14} /> Remove {o.label}</button>)}</div>}
-          {tab === 'Text' && <div><h2 className="serif text-2xl">The words that stay</h2><label className="field-label mt-4" htmlFor="artifact-caption">Caption</label><input id="artifact-caption" className="input-paper" maxLength={120} value={custom.caption ?? ''} placeholder="A little note for later…" onChange={(e) => update({ caption: e.target.value })} />
-            <span className="field-label mt-4">Position</span><div className="mb-4 flex gap-2">{(['bottom','top'] as const).map((pos) => <button key={pos} aria-pressed={(custom.captionPosition ?? 'bottom') === pos} onClick={() => update({ captionPosition: pos })} className={`min-h-11 flex-1 rounded-xl border capitalize ${(custom.captionPosition ?? 'bottom') === pos ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{pos}</button>)}</div>
-            <span className="field-label">Font</span><div className="mb-4 flex gap-2">{(['serif','sans','handwritten'] as const).map((f) => <button key={f} aria-pressed={(custom.captionFont ?? 'serif') === f} onClick={() => update({ captionFont: f })} className={`min-h-11 flex-1 rounded-xl border capitalize ${(custom.captionFont ?? 'serif') === f ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}>{f}</button>)}</div>
-            <Button variant="secondary" className="mt-2" onClick={() => addObject('text','your note')}>Add movable text</Button><div className="mt-5 space-y-2">{custom.objects.filter((o) => o.kind === 'text').map((o) => <div key={o.id} className="flex items-center gap-2"><input aria-label="Editable artwork text" className="input-paper" value={o.label} onChange={(e) => update({ objects: custom.objects.map((item) => item.id === o.id ? { ...item, label: e.target.value.slice(0,120) } : item) })} /><button aria-label="Remove text object" className="button-quiet" onClick={() => update({ objects: custom.objects.filter((item) => item.id !== o.id) })}><Trash2 size={16} /></button></div>)}</div></div>}
-          {!creatorToken && <p role="alert" className="mt-5 rounded-xl bg-[#f2e5d8] p-3 text-sm text-[#6f5147]">This device doesn’t have the creator key. Open the editor on the device that created this booth to save changes.</p>}
-          {save.isError && <div className="mt-4"><ErrorNote message={getError(save.error)} /></div>}
-          <div className="mt-6 flex items-center justify-between border-t border-[#e4ddd3] pt-4 text-xs text-[#756f66]"><span>{save.isPending ? 'Saving…' : dirty ? 'Changes save as you go' : 'All changes saved'}</span><button className="underline" disabled={!creatorToken} onClick={() => { update(defaultCustomization(booth)); }}>Reset to original</button></div>
-        </section>
-      </div>
-    </div>
-  </Shell>;
-}
-
-const previewKey = (token: string) => `tc-preview:${token}`;
-
-export function CreatorStylePage() {
-  const { privateToken = '' } = useParams<{privateToken:string}>();
-  const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
-  const query = useBooth(privateToken);
-  const booth = query.data;
-  const creatorToken = localStorage.getItem(creatorKey(privateToken)) ?? '';
-  const save = useSaveBoothCustomization({ request: { headers: { 'X-Creator-Token': creatorToken } } });
-  const creatorPreview = sessionStorage.getItem(previewKey(privateToken)) ?? '';
-  const [frameType, setFrameType] = useState<CustomizationInput['frameType']>('clean');
-  const [frameColor, setFrameColor] = useState('#FFFDF8');
-  const [filter, setFilter] = useState<CustomizationInput['filter']>('original');
-
-  useEffect(() => {
-    if (booth) {
-      const pendingFrame = localStorage.getItem(pendingFrameKey(privateToken)) as CustomizationInput['frameType'] | null;
-      setFrameType(pendingFrame ?? booth.customization?.frameType ?? 'clean');
-      setFrameColor(pendingFrame === 'solid' ? '#E5786A' : booth.customization?.frameColor ?? '#FFFDF8');
-      setFilter(booth.customization?.filter ?? 'original');
-    }
-  }, [booth]);
-
-  const photos = useMemo(() => {
-    if (!booth) return [];
-    return booth.slots.map((slot, i) => {
-      if (slot.photoUrl) return slot.photoUrl;
-      if (i === 0 && creatorPreview) return creatorPreview;
-      return '';
-    });
-  }, [booth, creatorPreview]);
-
-  const done = async () => {
-    if (!creatorToken || !booth) return;
-    const data: CustomizationInput = {
-      mode: booth.customization?.mode ?? booth.mode,
-      layout: booth.customization?.layout ?? booth.layout,
-      frameType,
-      frameColor,
-      filter,
-      showDate: booth.customization?.showDate ?? true,
-      caption: booth.customization?.caption ?? '',
-      captionPosition: booth.customization?.captionPosition ?? 'bottom',
-      captionFont: booth.customization?.captionFont ?? 'serif',
-      objects: booth.customization?.objects ?? [],
-      slotAdjustments: booth.customization?.slotAdjustments ?? [],
-    };
-    try {
-      const saved = await save.mutateAsync({ privateToken, data });
-      queryClient.setQueryData<BoothState>(getGetBoothQueryKey(privateToken), (old) => old ? { ...old, customization: saved } : old);
-      sessionStorage.removeItem(previewKey(privateToken));
-      localStorage.removeItem(pendingFrameKey(privateToken));
-      navigate(`/booth/${privateToken}`);
-    } catch { /* Error shown via save.isError */ }
-  };
-
-  if (query.isLoading || !booth) return <Shell><div className="mx-auto max-w-4xl py-12"><BoothLoading error={query.error} retry={() => void query.refetch()} /></div></Shell>;
-  if (!creatorToken) return <Shell><div className="mx-auto max-w-lg py-12"><Panel><h1 className="serif text-3xl">Creator access needed.</h1><p className="text-[#6f685f]">Open this page on the device where you created the booth.</p><Button onClick={() => navigate(`/booth/${privateToken}`)}>Back to booth</Button></Panel></div></Shell>;
-
-  return <Shell>
-    <div className="mx-auto max-w-[1100px] py-6">
-      <div className="mb-5"><p className="eyebrow">Almost there</p><h1 className="serif mt-1 text-4xl">Pick a look for your booth.</h1></div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(300px,.85fr)]">
-        <section className="flex min-h-[320px] items-center justify-center p-4 sm:min-h-[480px] sm:p-8">
-          <div className="text-center" style={{ width: fittedFrameWidth(booth.customization?.layout ?? booth.layout, booth.participantCount, booth.photosPerPerson, 'min(44dvh, 460px)') }}>
-            <div className="keepsake-preview"><FramePreview photos={photos} layout={booth.customization?.layout ?? booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization?.caption} frameColor={frameColor} filter={filter} frameType={frameType} showDate={booth.customization?.showDate} stickerImageMap={stickerImageMap} /></div>
-          </div>
-        </section>
-        <section className="paper-card rounded-[22px] p-4 sm:p-6">
-          <div>
-            <h2 className="serif text-2xl">Frame style</h2>
-            <FrameTypePicker value={frameType} onChange={(next) => { setFrameType(next); if (next === 'solid' && frameColor.toLowerCase() === '#fffdf8') setFrameColor('#E5786A'); }} layout={booth.customization?.layout ?? booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} photos={photos} frameColor={frameColor} />
-          </div>
-          <div className="mt-6">
-            <p className="field-label">Paper color</p>
-            <div className="flex flex-wrap gap-3">{frameColors.map((color) => <button key={color} aria-label={`Frame color ${color}`} aria-pressed={frameColor.toLowerCase() === color.toLowerCase()} onClick={() => setFrameColor(color)} className={`size-11 rounded-full border ${frameColor.toLowerCase() === color.toLowerCase() ? 'ring-2 ring-[#292723] ring-offset-2' : 'border-[#bcb3a7]'}`} style={{ backgroundColor: color }} />)}</div>
-          </div>
-          <div className="mt-6">
-            <h2 className="serif text-2xl">Filter</h2>
-            <div className="mt-3 grid grid-cols-3 gap-2">{filters.map(([value,label],i) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-[68px] rounded-xl border p-2 text-center ${filter === value ? 'border-[#292723] bg-[#292723] text-white' : 'border-[#d9d1c5] bg-[#fffdf8]'}`}><span className={`mx-auto mb-1 block h-7 w-10 rounded-md ${['bg-[#9fb9c7]','bg-[#999] grayscale','bg-[#d7b69b]','bg-[#b7cce0]','bg-[#e8ded0]'][i%5]}`} /><span className="text-xs">{label}</span></button>)}</div>
-          </div>
-          {save.isError && <div className="mt-4"><ErrorNote message={getError(save.error)} /></div>}
-          <Button className="mt-6 w-full" disabled={save.isPending} onClick={() => void done()}>{save.isPending ? <><LoaderCircle className="animate-spin" /> Saving…</> : <>Done <Check size={17} /></>}</Button>
-        </section>
-      </div>
-    </div>
-  </Shell>;
 }
 
 export function NotificationsPage() {

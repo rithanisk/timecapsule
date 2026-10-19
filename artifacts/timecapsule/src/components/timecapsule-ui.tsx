@@ -1,7 +1,7 @@
 import { type ButtonHTMLAttributes, type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Hourglass, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Home, Hourglass, Image, Link2, LoaderCircle, Share2, Sparkles, Trash2, Users } from 'lucide-react';
 import { frameAssetUrl, frameOverlayFilter, getFrameLayout, photoIndexForSlot } from '@/lib/frame-layouts';
 
 export function Brand({ light = false }: { light?: boolean }) {
@@ -115,4 +115,4 @@ export function SlotList({ slots, photosPerPerson = 1 }: { slots: Array<{ id: st
   </ul>;
 }
 
-export { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Image, Link2, LoaderCircle, Palette, Share2, Sparkles, Trash2 };
+export { ArrowLeft, ArrowRight, Camera, Check, ChevronDown, Copy, Download, Heart, Image, Link2, LoaderCircle, Share2, Sparkles, Trash2 };

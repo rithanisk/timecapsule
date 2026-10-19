@@ -94,9 +94,7 @@ export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<type
   const allSubmitted =
     slots.length === booth.participantCount &&
     slots.every((slot) => slot.claimStatus === "submitted" && Boolean(slot.mediaPath));
-  const revealAvailable =
-    allSubmitted &&
-    (!booth.scheduledRevealAt || new Date() >= booth.scheduledRevealAt);
+  const revealAvailable = allSubmitted;
   const state = {
     name: booth.name,
     subtitle: booth.subtitle,
@@ -149,8 +147,8 @@ router.post("/booths", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Add one slot name for each participant." });
     return;
   }
-  if (input.revealMode === "scheduled" && !input.scheduledRevealAt) {
-    res.status(400).json({ error: "Choose a reveal time for a scheduled booth." });
+  if (input.revealMode === "scheduled") {
+    res.status(400).json({ error: "Photobooths now open when everyone finishes their photos." });
     return;
   }
 
@@ -563,7 +561,7 @@ router.get("/booths/:privateToken/slots/:slotId/draft-photo", async (req, res): 
       res.status(403).json({ error: "This participant link cannot view that photo." });
       return;
     }
-    if ((slot.claimStatus !== "staged" && slot.claimStatus !== "submitted") || !slot.mediaPath) {
+    if (slot.claimStatus !== "staged" || !slot.mediaPath) {
       res.status(404).json({ error: "This saved photo is unavailable." });
       return;
     }
@@ -849,6 +847,14 @@ router.put("/booths/:privateToken/customization", async (req, res): Promise<void
     return;
   }
   try {
+    const [startedPhoto] = await db.select({ id: boothSlotsTable.id }).from(boothSlotsTable).where(and(
+      eq(boothSlotsTable.boothId, booth.id),
+      inArray(boothSlotsTable.claimStatus, ["staged", "submitted"]),
+    )).limit(1);
+    if (startedPhoto) {
+      res.status(409).json({ error: "The booth design is locked once photos are saved." });
+      return;
+    }
     await db
       .update(boothsTable)
       .set({

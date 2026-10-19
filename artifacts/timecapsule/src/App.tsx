@@ -8,9 +8,7 @@ import {
   CapturePage,
   ArchivePage,
   CreateBoothPage,
-  CreatorStylePage,
   BoothManagePage,
-  EditorPage,
   HomePage,
   JoinPage,
   NotificationsPage,
@@ -22,6 +20,7 @@ import {
   Route,
   Switch,
   useLocation,
+  useParams,
   Router as WouterRouter,
 } from 'wouter';
 
@@ -41,6 +40,15 @@ function RequireSignIn({ children }: { children: ReactNode }) {
   return user ? <>{children}</> : null;
 }
 
+function BoothStatusRedirect() {
+  const { privateToken = '' } = useParams<{ privateToken: string }>();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (privateToken) navigate(`/booth/${privateToken}`, { replace: true });
+  }, [privateToken, navigate]);
+  return null;
+}
+
 function Router() {
   return (
     // Keep a shared shell (sidebar, navbar) outside the boundary so it
@@ -56,8 +64,8 @@ function Router() {
         <Route path="/join/:privateToken/capture"><RequireSignIn><CapturePage /></RequireSignIn></Route>
         <Route path="/join/:privateToken" component={JoinPage} />
         <Route path="/booth/:privateToken/reveal" component={RevealPage} />
-        <Route path="/booth/:privateToken/style"><RequireSignIn><CreatorStylePage /></RequireSignIn></Route>
-        <Route path="/booth/:privateToken/edit"><RequireSignIn><EditorPage /></RequireSignIn></Route>
+        <Route path="/booth/:privateToken/style" component={BoothStatusRedirect} />
+        <Route path="/booth/:privateToken/edit" component={BoothStatusRedirect} />
         <Route path="/booth/:privateToken/notifications" component={NotificationsPage} />
         <Route path="/booth/:privateToken" component={BoothManagePage} />
         <Route component={NotFound} />
