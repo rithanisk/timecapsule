@@ -20,6 +20,7 @@ export interface FrameGeometry {
   width: number;
   height: number;
   slots: FrameSlotGeometry[];
+  generated?: boolean;
 }
 
 const layouts = manifest.styles as unknown as Record<FrameStyle, Record<string, FrameGeometry>>;
@@ -48,6 +49,12 @@ export function getFrameLayout(layout: string, people: number, photosPerPerson: 
 }
 
 export function frameAssetUrl(frame: FrameGeometry): string {
+  if (frame.generated) {
+    // Keep the frame overlay aligned with the slot coordinates in the manifest.
+    const holes = frame.slots.map(({ x, y, w, h }) => `M${x} ${y}h${w}v${h}h-${w}Z`).join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${frame.width} ${frame.height}"><path fill="#fffdf8" fill-rule="evenodd" d="M0 0h${frame.width}v${frame.height}H0Z${holes}"/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
   return `${import.meta.env.BASE_URL}photobooth-frames/${frame.file}`;
 }
 
