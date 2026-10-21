@@ -107,7 +107,7 @@ function HomeSampleStrip({ photos, layout, frameType }: { photos: string[]; layo
 export function HomePage() {
   const [, navigate] = useLocation();
   const { user, logout } = useAuth();
-  const { entries: archived, selectedIds } = useArchiveBooths();
+  const { entries: archived, selectedIds, error: archiveError } = useArchiveBooths();
   const myBoothsQuery = useGetMyBooths({ query: { queryKey: [...getGetMyBoothsQueryKey(), user?.id], enabled: Boolean(user) } });
   const myBooths = Array.isArray(myBoothsQuery.data) ? myBoothsQuery.data : [];
   const featured = user ? selectedIds.flatMap((id) => archived.filter((item) => item.id === id)) : [];
@@ -143,6 +143,7 @@ export function HomePage() {
         })}
       </div>
 
+      {user && archiveError && <div className="mx-auto mt-8 max-w-[700px]"><ErrorNote message={`Could not load your liked photostrips: ${getError(archiveError)}`} /></div>}
       {featured.length > 0 && <section className="mx-auto mt-10 max-w-[900px]" aria-labelledby="liked-photostrips-heading">
         <h2 id="liked-photostrips-heading" className="serif mb-4 text-center text-2xl">Liked photostrips</h2>
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">

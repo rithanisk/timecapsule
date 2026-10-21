@@ -38,7 +38,7 @@ Timecapsule is a private asynchronous photo booth where friends and family contr
 - Booth data and media have no automatic expiry. Creators can delete a booth and its media explicitly.
 - `booths.participant_count` currently stores the number of photo slots; API responses derive the number of people using `photos_per_person`. Preserve this legacy storage meaning unless a data migration is planned.
 - `booths.expires_at` is nullable in the current schema. Startup removes an older NOT NULL constraint without clearing expiry values.
-- On API startup, `runMigrations` creates missing active tables (`users`, `booths`, `booth_slots`, and `user_booth_access`) and their indexes. It repairs known older columns on `users` and `booths`, and drops the unused `push_subscriptions` table. The session library creates `session`. This does not repair arbitrary schema drift, and it does not replace Replit's pre-publish schema validation.
+- On API startup, `runMigrations` creates missing active tables (`users`, `session`, `booths`, `booth_slots`, and `user_booth_access`) and their indexes. It repairs known older columns on `users` and `booths`, and drops the unused `push_subscriptions` table. The `session` table matches the session library's schema, which otherwise creates it only when the store is first queried. This does not repair arbitrary schema drift, and it does not replace Replit's pre-publish schema validation.
 
 ## Product
 

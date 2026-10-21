@@ -1,5 +1,6 @@
 export * from "./booths";
 export * from "./users";
+export * from "./session";
 export * from "./userBoothAccess";
 
 // Export your models here. Add one export per file

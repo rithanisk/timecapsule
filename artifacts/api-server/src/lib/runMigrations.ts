@@ -19,6 +19,20 @@ export async function runMigrations() {
       )
     `);
 
+    // connect-pg-simple normally creates this table on its first session
+    // query. Create it during startup so an unused development session store
+    // still has the schema needed by the publish comparison.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS session (
+        sid VARCHAR PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      )
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session (expire)
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS booths (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

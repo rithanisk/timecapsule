@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAccountArchive, linkBoothToAccount, linkParticipationToAccount, saveArchiveHomeSelection, type AccountArchive, type BoothState } from '@workspace/api-client-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -18,9 +19,19 @@ function writeLocalSelection(tokens: string[]) {
   localStorage.setItem(selectionKey, JSON.stringify(tokens));
 }
 
-async function fetchAccountArchive(userId: string): Promise<LinkedAccountArchive> {
+function cachedLinkedTokens(userId: string): Record<string, string> {
+  const prefix = `${userId}:`;
+  return Object.fromEntries(
+    [...linkedLocalTokens].filter(([key]) => key.startsWith(prefix)).map(([key, id]) => [key.slice(prefix.length), id]),
+  );
+}
+
+async function linkLocalArchive(userId: string): Promise<boolean> {
   const linkedTokens: Record<string, string> = {};
   const creatorKeys = Object.keys(localStorage).filter((key) => key.startsWith('tc-creator:'));
+  const participantKeys = Object.keys(localStorage).filter((key) => key.startsWith('tc-participant:'));
+  const migrationKey = `tc-home-selection-migrated:${userId}`;
+  if (!creatorKeys.length && !participantKeys.length && localStorage.getItem(migrationKey)) return false;
   for (const key of creatorKeys) {
     const token = key.slice('tc-creator:'.length);
     const creatorToken = localStorage.getItem(key);
@@ -34,7 +45,6 @@ async function fetchAccountArchive(userId: string): Promise<LinkedAccountArchive
       linkedLocalTokens.set(cacheKey, linked.id);
     } catch { /* Keep locally accessible booths even if they cannot be linked. */ }
   }
-  const participantKeys = Object.keys(localStorage).filter((key) => key.startsWith('tc-participant:'));
   for (const key of participantKeys) {
     const [token, slotId] = key.slice('tc-participant:'.length).split(':');
     const participantToken = localStorage.getItem(key);
@@ -49,7 +59,6 @@ async function fetchAccountArchive(userId: string): Promise<LinkedAccountArchive
     } catch { /* An invalid participant key does not block the archive. */ }
   }
   let archive = await getAccountArchive();
-  const migrationKey = `tc-home-selection-migrated:${userId}`;
   if (!localStorage.getItem(migrationKey)) {
     const local = readHomeSelection();
     const visibleIds = new Set(archive.entries.map((entry) => entry.id));
@@ -61,14 +70,29 @@ async function fetchAccountArchive(userId: string): Promise<LinkedAccountArchive
     writeLocalSelection(local.filter((token) => !linkedTokens[token]));
     localStorage.setItem(migrationKey, 'true');
   }
-  return { ...archive, linkedTokens };
+  return true;
 }
 
 export function useArchiveBooths(): { entries: ArchiveEntry[]; selectedIds: string[]; ownedTokens: string[]; isLoading: boolean; error: Error | null; saveSelection: (ids: string[]) => Promise<void> } {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const accountKey = ['account-archive', user?.id];
-  const accountQuery = useQuery({ queryKey: accountKey, queryFn: () => fetchAccountArchive(user!.id), enabled: Boolean(user), staleTime: 0, refetchInterval: 30_000, retry: false });
+  const accountQuery = useQuery({
+    queryKey: accountKey,
+    queryFn: async (): Promise<LinkedAccountArchive> => ({ ...await getAccountArchive(), linkedTokens: cachedLinkedTokens(user!.id) }),
+    enabled: Boolean(user),
+    staleTime: 0,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+  useEffect(() => {
+    if (!user || !accountQuery.isSuccess) return;
+    let active = true;
+    void linkLocalArchive(user.id).then((changed) => {
+      if (active && changed) void queryClient.invalidateQueries({ queryKey: ['account-archive', user.id] });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [user?.id, accountQuery.isSuccess, queryClient]);
   const account = accountQuery.data;
   const accountEntries = (account?.entries ?? []).map((entry) => ({ ...entry, token: Object.keys(account?.linkedTokens ?? {}).find((token) => account?.linkedTokens[token] === entry.id) }));
   const entries = accountEntries;
