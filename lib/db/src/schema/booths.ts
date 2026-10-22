@@ -47,6 +47,7 @@ export const boothsTable = pgTable(
         caption: "",
         objects: [],
       }),
+    stripPath: text("strip_path"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -432,6 +432,7 @@ components:
         status: { type: string, enum: [collecting, complete, revealed, deleted] }
         completedCount: { type: integer }
         revealAvailable: { type: boolean }
+        stripUrl: { type: ["string", "null"], description: Private cached PNG route; null until the strip is rendered. }
         slots:
           type: array
           items: { $ref: "#/components/schemas/BoothSlot" }

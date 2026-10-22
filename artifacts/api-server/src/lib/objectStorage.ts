@@ -133,6 +133,23 @@ export class ObjectStorageService {
     });
   }
 
+  async savePrivatePng(buffer: Buffer): Promise<string> {
+    const objectId = `strips/${randomUUID()}.png`;
+    const dir = this.getPrivateObjectDir().replace(/\/+$/, '');
+    const { bucketName, objectName } = parseObjectPath(`${dir}/${objectId}`);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    await file.save(buffer, {
+      resumable: false,
+      metadata: { contentType: 'image/png', cacheControl: 'private, max-age=31536000, immutable' },
+    });
+    const [metadata] = await file.getMetadata();
+    if (Number(metadata.size) !== buffer.length) {
+      await file.delete({ ignoreNotFound: true });
+      throw new Error('Saved photostrip did not pass size verification');
+    }
+    return `/objects/${objectId}`;
+  }
+
   async getObjectEntityFile(objectPath: string): Promise<File> {
     if (!objectPath.startsWith('/objects/')) {
       throw new ObjectNotFoundError();

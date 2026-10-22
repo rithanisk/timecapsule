@@ -32,6 +32,7 @@ import {
   db,
 } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { ensureStripImage } from "../lib/stripImage";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -76,7 +77,7 @@ async function findBooth(privateToken: string) {
   return booth;
 }
 
-export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof findBooth>>>, privateToken: string, photoUrlForSlot?: (slotId: string) => string) {
+export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<typeof findBooth>>>, privateToken: string, photoUrlForSlot?: (slotId: string) => string, stripUrlForBooth?: () => string) {
   const slots = await db
     .select()
     .from(boothSlotsTable)
@@ -84,7 +85,7 @@ export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<type
     .orderBy(asc(boothSlotsTable.position));
   const allSubmitted =
     slots.length === booth.participantCount &&
-    slots.every((slot) => slot.claimStatus === "submitted" && Boolean(slot.mediaPath));
+    slots.every((slot) => slot.claimStatus === "submitted" && (Boolean(slot.mediaPath) || Boolean(booth.stripPath)));
   const photosPerPerson = Math.max(1, booth.photosPerPerson);
   // Existing rows store the number of photo slots in participant_count.
   const participantCount = Math.ceil(booth.participantCount / photosPerPerson);
@@ -97,7 +98,7 @@ export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<type
   ).filter(
     (group) =>
       group.length === photosPerPerson &&
-      group.every((slot) => slot.claimStatus === "submitted" && Boolean(slot.mediaPath)),
+      group.every((slot) => slot.claimStatus === "submitted" && (Boolean(slot.mediaPath) || Boolean(booth.stripPath))),
   ).length;
   const state = {
     name: booth.name,
@@ -114,13 +115,14 @@ export async function buildBoothState(booth: NonNullable<Awaited<ReturnType<type
     status: revealAvailable ? "revealed" : allSubmitted ? "complete" : "collecting",
     completedCount,
     revealAvailable,
+    stripUrl: revealAvailable && booth.stripPath ? `${stripUrlForBooth?.() ?? `/api/booths/${privateToken}/strip`}?v=${encodeURIComponent(booth.stripPath.split('/').pop() || '')}` : null,
     slots: slots.map((slot) => ({
       id: slot.id,
       position: slot.position,
       displayName: slot.displayName || `Open slot ${slot.position + 1}`,
       claimStatus: slot.claimStatus,
       photoUrl:
-        revealAvailable && slot.mediaPath
+        revealAvailable && slot.mediaPath && !booth.stripPath
           ? photoUrlForSlot?.(slot.id) ?? `/api/booths/${privateToken}/slots/${slot.id}/photo`
           : null,
     })),
@@ -228,7 +230,13 @@ router.get("/booths/:privateToken", async (req, res): Promise<void> => {
       res.status(404).json({ error: "This booth could not be found." });
       return;
     }
-    res.json(await buildBoothState(booth, params.data.privateToken));
+    if (booth.status === 'complete' && !booth.stripPath) {
+      try { await ensureStripImage(booth.id); } catch (error) { req.log.error({ err: error }, 'Could not render completed strip'); }
+    } else if (booth.stripPath) {
+      void ensureStripImage(booth.id).catch((error) => req.log.error({ err: error }, 'Could not remove original photos'));
+    }
+    const current = await findBooth(params.data.privateToken);
+    res.json(await buildBoothState(current!, params.data.privateToken));
   } catch (error) {
     req.log.error({ err: error }, "Failed to load booth");
     res.status(500).json({ error: "The booth could not be loaded. Try again." });
@@ -525,7 +533,11 @@ router.post(
         res.status(404).json({ error: "This booth could not be found." });
         return;
       }
-      const updatedState = await buildBoothState(updatedBooth, params.data.privateToken);
+      if (updatedBooth.status === 'complete' && !updatedBooth.stripPath) {
+        try { await ensureStripImage(updatedBooth.id); } catch (error) { req.log.error({ err: error }, 'Could not render completed strip'); }
+      }
+      const current = await findBooth(params.data.privateToken);
+      const updatedState = await buildBoothState(current!, params.data.privateToken);
       res.json(
         ConfirmBoothFrameResponse.parse(updatedState),
       );
@@ -679,7 +691,11 @@ router.post("/booths/:privateToken/slots/:slotId/finalize", async (req, res): Pr
       res.status(404).json({ error: "This booth could not be found." });
       return;
     }
-    const state = await buildBoothState(updated, params.data.privateToken);
+    if (updated.status === 'complete' && !updated.stripPath) {
+      try { await ensureStripImage(updated.id); } catch (error) { req.log.error({ err: error }, 'Could not render completed strip'); }
+    }
+    const current = await findBooth(params.data.privateToken);
+    const state = await buildBoothState(current!, params.data.privateToken);
     res.json(state);
   } catch (error) {
     req.log.error({ err: error }, "Failed to finalize participant photos");
@@ -705,6 +721,10 @@ router.get(
       const state = await buildBoothState(booth, params.data.privateToken);
       if (!state.revealAvailable) {
         res.status(404).json({ error: "This frame is still hidden." });
+        return;
+      }
+      if (booth.stripPath) {
+        res.status(404).json({ error: "This frame is now part of the finished photostrip." });
         return;
       }
       const [slot] = await db
@@ -781,6 +801,29 @@ router.put("/booths/:privateToken/customization", async (req, res): Promise<void
   }
 });
 
+router.get('/booths/:privateToken/strip', async (req, res): Promise<void> => {
+  try {
+    const booth = await findBooth(getPrivateToken(req));
+    if (!booth || booth.status === 'deleted' || !booth.stripPath) { res.sendStatus(404); return; }
+    const state = await buildBoothState(booth, getPrivateToken(req));
+    if (!state.revealAvailable) { res.sendStatus(404); return; }
+    const file = await storage.getObjectEntityFile(booth.stripPath);
+    const response = await storage.downloadObject(file, 31536000);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    if (response.body) {
+      const { Readable } = await import('node:stream');
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else res.end();
+  } catch (error) {
+    req.log.error({ err: error }, 'Failed to serve photostrip');
+    res.sendStatus(404);
+  }
+});
+
 router.delete("/booths/:privateToken", async (req, res): Promise<void> => {
   const params = DeleteBoothParams.safeParse(req.params);
   const headers = DeleteBoothHeader.safeParse({
@@ -801,7 +844,7 @@ router.delete("/booths/:privateToken", async (req, res): Promise<void> => {
       .from(boothSlotsTable)
       .where(eq(boothSlotsTable.boothId, booth.id));
     const paths = new Set(
-      slots.flatMap((slot) => [slot.mediaPath, slot.pendingObjectPath].filter(Boolean) as string[]),
+      [...slots.flatMap((slot) => [slot.mediaPath, slot.pendingObjectPath].filter(Boolean) as string[]), booth.stripPath].filter(Boolean) as string[],
     );
     for (const path of paths) {
       try {

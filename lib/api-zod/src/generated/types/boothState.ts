@@ -32,6 +32,11 @@ export interface BoothState {
   status: BoothStateStatus;
   completedCount: number;
   revealAvailable: boolean;
+  /**
+     * Private cached PNG route; null until the strip is rendered.
+     * @nullable
+     */
+  stripUrl?: string | null;
   slots: BoothSlot[];
   customization: CustomizationInput;
 }

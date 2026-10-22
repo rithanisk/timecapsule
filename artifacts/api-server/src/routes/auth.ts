@@ -14,6 +14,7 @@ import {
 import { boothSlotsTable, db, userBoothAccessTable, usersTable, boothsTable } from "@workspace/db";
 import { buildBoothState } from "./booths";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { ensureStripImage } from "../lib/stripImage";
 
 const router: IRouter = Router();
 const BCRYPT_ROUNDS = 12;
@@ -228,10 +229,18 @@ router.get("/auth/archive", async (req, res): Promise<void> => {
     const [user] = await db.select({ homeStripBoothIds: usersTable.homeStripBoothIds }).from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
     const accessIds = await accessibleBoothIds(req.session.userId);
     const booths = await db.select().from(boothsTable).where(and(accessIds.length ? or(eq(boothsTable.userId, req.session.userId), inArray(boothsTable.id, accessIds)) : eq(boothsTable.userId, req.session.userId), ne(boothsTable.status, "deleted"))).orderBy(desc(boothsTable.createdAt));
-    const entries = (await Promise.all(booths.map(async (booth) => ({
-      id: booth.id,
-      booth: await buildBoothState(booth, "", (slotId) => `/api/auth/archive/${booth.id}/slots/${slotId}/photo`),
-    })))).filter((entry) => entry.booth.revealAvailable);
+    const entries = (await Promise.all(booths.map(async (booth) => {
+      if (booth.status === 'complete' && !booth.stripPath) {
+        try { await ensureStripImage(booth.id); } catch (error) { req.log.error({ err: error, boothId: booth.id }, 'Could not render archived strip'); }
+      } else if (booth.stripPath) {
+        void ensureStripImage(booth.id).catch((error) => req.log.error({ err: error, boothId: booth.id }, 'Could not remove original photos'));
+      }
+      const [current] = await db.select().from(boothsTable).where(eq(boothsTable.id, booth.id)).limit(1);
+      return {
+        id: booth.id,
+        booth: await buildBoothState(current || booth, "", (slotId) => `/api/auth/archive/${booth.id}/slots/${slotId}/photo`, () => `/api/auth/archive/${booth.id}/strip`),
+      };
+    }))).filter((entry) => entry.booth.revealAvailable);
     const visibleIds = new Set(entries.map((entry) => entry.id));
     res.json({ entries, selectedIds: (user?.homeStripBoothIds ?? []).filter((id) => visibleIds.has(id)) });
   } catch (error) {
@@ -269,6 +278,7 @@ router.get("/auth/archive/:boothId/slots/:slotId/photo", async (req, res): Promi
     if (!booth || booth.status === "deleted" || !await canAccessBooth(req.session.userId, booth.id, booth.userId)) { res.status(404).json({ error: "This booth is unavailable." }); return; }
     const state = await buildBoothState(booth, "");
     if (!state.revealAvailable) { res.status(404).json({ error: "This frame is still hidden." }); return; }
+    if (booth.stripPath) { res.status(404).json({ error: "This frame is now part of the finished photostrip." }); return; }
     const [slot] = await db.select().from(boothSlotsTable).where(and(eq(boothSlotsTable.boothId, booth.id), eq(boothSlotsTable.id, slotId), eq(boothSlotsTable.claimStatus, "submitted"))).limit(1);
     if (!slot?.mediaPath) { res.status(404).json({ error: "This frame could not be found." }); return; }
     const objectFile = await storage.getObjectEntityFile(slot.mediaPath);
@@ -284,6 +294,32 @@ router.get("/auth/archive/:boothId/slots/:slotId/photo", async (req, res): Promi
   } catch (error) {
     req.log.error({ err: error }, "Failed to serve account archive frame");
     res.status(404).json({ error: "This frame could not be loaded." });
+  }
+});
+
+router.get('/auth/archive/:boothId/strip', async (req, res): Promise<void> => {
+  if (!req.session.userId) { res.sendStatus(401); return; }
+  const boothId = routeParam(req.params.boothId);
+  try {
+    const [booth] = await db.select().from(boothsTable).where(eq(boothsTable.id, boothId)).limit(1);
+    if (!booth || booth.status === 'deleted' || !booth.stripPath || !await canAccessBooth(req.session.userId, booth.id, booth.userId)) { res.sendStatus(404); return; }
+    const state = await buildBoothState(booth, '');
+    if (!state.revealAvailable) { res.sendStatus(404); return; }
+    const file = await storage.getObjectEntityFile(booth.stripPath);
+    const response = await storage.downloadObject(file, 31536000);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('Vary', 'Cookie');
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    if (response.body) {
+      const { Readable } = await import('node:stream');
+      Readable.fromWeb(response.body as ReadableStream<Uint8Array>).pipe(res);
+    } else res.end();
+  } catch (error) {
+    req.log.error({ err: error }, 'Failed to serve archived photostrip');
+    res.sendStatus(404);
   }
 });
 

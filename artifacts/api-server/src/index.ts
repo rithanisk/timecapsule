@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./lib/runMigrations";
+import { migrateCompletedStrips } from './lib/stripImage';
 
 const rawPort = process.env["PORT"];
 
@@ -25,6 +26,8 @@ void runMigrations()
       }
 
       logger.info({ port }, "Server listening");
+      void migrateCompletedStrips((boothId, error) => logger.error({ boothId, err: error }, 'Could not migrate completed photostrip'))
+        .catch((error) => logger.error({ err: error }, 'Could not scan completed photostrips'));
     });
   })
   .catch(() => process.exit(1));

@@ -52,6 +52,7 @@ export async function runMigrations() {
         status TEXT NOT NULL DEFAULT 'collecting',
         user_id UUID,
         customization JSONB NOT NULL DEFAULT '{"mode":"classic","filter":"original","layout":"vertical","caption":"","objects":[],"showDate":true,"frameType":"clean","frameColor":"#FFFDF8"}'::jsonb,
+        strip_path TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         completed_at TIMESTAMPTZ,
         expires_at TIMESTAMPTZ,
@@ -105,6 +106,9 @@ export async function runMigrations() {
     `);
     await client.query(`
       ALTER TABLE booths ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ
+    `);
+    await client.query(`
+      ALTER TABLE booths ADD COLUMN IF NOT EXISTS strip_path TEXT
     `);
     await client.query(`
       ALTER TABLE booths ALTER COLUMN expires_at DROP NOT NULL

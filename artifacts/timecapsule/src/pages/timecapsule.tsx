@@ -148,7 +148,7 @@ export function HomePage() {
         <h2 id="liked-photostrips-heading" className="serif mb-4 text-center text-2xl">Liked photostrips</h2>
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
           {featured.map((entry) => <Link key={entry.id} href={entry.token ? `/booth/${entry.token}/reveal` : `/archive/${entry.id}/reveal`} className="block min-w-0 no-underline" aria-label={`Open ${entry.booth.name}`}>
-            <FramePreview photos={entry.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={entry.booth.customization.layout || entry.booth.layout} people={entry.booth.participantCount} photosPerPerson={entry.booth.photosPerPerson} caption={entry.booth.customization.caption} frameColor={entry.booth.customization.frameColor} filter={entry.booth.customization.filter} frameType={entry.booth.customization.frameType} objects={entry.booth.customization.objects} showDate={false} captionPosition={entry.booth.customization.captionPosition} captionFont={entry.booth.customization.captionFont} slotAdjustments={entry.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact />
+            {entry.booth.stripUrl ? <img src={entry.booth.stripUrl} alt={`${entry.booth.name} photostrip`} className="block h-auto w-full" /> : <FramePreview photos={entry.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={entry.booth.customization.layout || entry.booth.layout} people={entry.booth.participantCount} photosPerPerson={entry.booth.photosPerPerson} caption={entry.booth.customization.caption} frameColor={entry.booth.customization.frameColor} filter={entry.booth.customization.filter} frameType={entry.booth.customization.frameType} objects={entry.booth.customization.objects} showDate={false} captionPosition={entry.booth.customization.captionPosition} captionFont={entry.booth.customization.captionFont} slotAdjustments={entry.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} compact />}
           </Link>)}
         </div>
       </section>}
@@ -207,7 +207,7 @@ export function ArchivePage() {
           <button className="archive-arrow" aria-label="Previous photostrip" disabled={archived.length < 2} onClick={() => move(-1)}><ArrowLeft size={22} /></button>
           <div className="archive-window"><AnimatePresence initial={false} custom={direction} mode="popLayout">
             <motion.div key={current.id} className="archive-print" style={{ width: fittedFrameWidth(current.booth.customization.layout || current.booth.layout, current.booth.participantCount, current.booth.photosPerPerson, 'min(40dvh, 420px)') }} custom={direction} variants={{ enter: (step: number) => ({ x: step > 0 ? '110%' : '-110%', opacity: 0, rotate: step > 0 ? 7 : -7 }), center: { x: 0, opacity: 1, rotate: 0 }, exit: (step: number) => ({ x: step > 0 ? '-110%' : '110%', opacity: 0, rotate: step > 0 ? -7 : 7 }) }} initial={reducedMotion ? false : 'enter'} animate="center" exit={reducedMotion ? undefined : 'exit'} transition={{ duration: reducedMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
-              <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} people={current.booth.participantCount} photosPerPerson={current.booth.photosPerPerson} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />
+              {current.booth.stripUrl ? <img src={current.booth.stripUrl} alt={`${current.booth.name} photostrip`} className="block h-auto w-full" /> : <FramePreview photos={current.booth.slots.map((slot) => slot.photoUrl ?? '')} layout={current.booth.customization.layout || current.booth.layout} people={current.booth.participantCount} photosPerPerson={current.booth.photosPerPerson} caption={current.booth.customization.caption} frameColor={current.booth.customization.frameColor} filter={current.booth.customization.filter} frameType={current.booth.customization.frameType} objects={current.booth.customization.objects} showDate={current.booth.customization.showDate} captionPosition={current.booth.customization.captionPosition} captionFont={current.booth.customization.captionFont} slotAdjustments={current.booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />}
             </motion.div>
           </AnimatePresence></div>
           <button className="archive-arrow" aria-label="Next photostrip" disabled={archived.length < 2} onClick={() => move(1)}><ArrowRight size={22} /></button>
@@ -639,6 +639,17 @@ export function RevealPage() {
   const photos = useMemo(() => booth?.slots.map((slot) => slot.photoUrl).filter((url): url is string => Boolean(url)) ?? [], [booth?.slots]);
   const exportArtifact = async () => {
     if (!booth) return;
+    if (booth.stripUrl) {
+      const response = await fetch(booth.stripUrl);
+      if (!response.ok) return;
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${booth.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-photobooth.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     const canvas = document.createElement('canvas');
     const layout = booth.customization.layout || booth.layout;
     const frame = getFrameLayout(layout, booth.participantCount, booth.photosPerPerson);
@@ -740,7 +751,7 @@ export function RevealPage() {
       {booth.subtitle && <p className={`mt-1 text-sm text-[#d6cfc5] ${skip ? '' : 'reveal-copy'}`}>{booth.subtitle}</p>}
       <div className="reveal-machine mx-auto mt-4" style={{ width: fittedFrameWidth(booth.customization.layout || booth.layout, booth.participantCount, booth.photosPerPerson, 'min(74dvh, 820px)') }}>
         <div className="reveal-machine-head" aria-hidden="true"><span className="reveal-machine-brand">timecapsule</span><span className="reveal-machine-light" /><span className="reveal-machine-slit" /></div>
-        <div className="reveal-output keepsake-preview"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}><FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} /></div></div>
+        <div className="reveal-output keepsake-preview"><div key={`print-${replay}`} className={skip ? '' : 'reveal-print'}>{booth.stripUrl ? <img src={booth.stripUrl} alt={`${booth.name} photostrip`} className="block h-auto w-full" /> : <FramePreview photos={photos} layout={booth.customization.layout || booth.layout} people={booth.participantCount} photosPerPerson={booth.photosPerPerson} caption={booth.customization.caption} frameColor={booth.customization.frameColor} filter={booth.customization.filter} frameType={booth.customization.frameType} objects={booth.customization.objects} showDate={booth.customization.showDate} captionPosition={booth.customization.captionPosition} captionFont={booth.customization.captionFont} slotAdjustments={booth.customization.slotAdjustments} stickerImageMap={stickerImageMap} />}</div></div>
       </div>
       <div className={`mx-auto mt-5 flex w-full max-w-[960px] flex-wrap items-center justify-center gap-3 text-center ${skip ? '' : 'reveal-copy'}`}>
         <Button className="!bg-[#fffdf8] !text-[#292723]" onClick={() => void exportArtifact()}><Download size={17} /> Download keepsake</Button>

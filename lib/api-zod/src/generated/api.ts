@@ -110,6 +110,7 @@ export const CreateBoothResponse = zod.object({
   "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
+  "stripUrl": zod.string().nullish().describe('Private cached PNG route; null until the strip is rendered.'),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
@@ -214,6 +215,7 @@ export const GetBoothResponse = zod.object({
   "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
+  "stripUrl": zod.string().nullish().describe('Private cached PNG route; null until the strip is rendered.'),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
@@ -426,6 +428,7 @@ export const ConfirmBoothFrameResponse = zod.object({
   "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
+  "stripUrl": zod.string().nullish().describe('Private cached PNG route; null until the strip is rendered.'),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
@@ -584,6 +587,7 @@ export const FinalizeParticipantPhotosResponse = zod.object({
   "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
+  "stripUrl": zod.string().nullish().describe('Private cached PNG route; null until the strip is rendered.'),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
@@ -930,6 +934,7 @@ export const GetAccountArchiveResponse = zod.object({
   "status": zod.enum(['collecting', 'complete', 'revealed', 'deleted']),
   "completedCount": zod.number().int(),
   "revealAvailable": zod.boolean(),
+  "stripUrl": zod.string().nullish().describe('Private cached PNG route; null until the strip is rendered.'),
   "slots": zod.array(zod.object({
   "id": zod.string(),
   "position": zod.number().int(),
